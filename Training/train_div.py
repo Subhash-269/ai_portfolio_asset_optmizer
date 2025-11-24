@@ -8,7 +8,7 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import os
-
+import torch.utils.data as data
 # ---------- CONFIG ----------
 # Use the new file name from the previous step
 CSV_PATH = "diversified_market_data.csv" 
@@ -19,7 +19,7 @@ if not os.path.exists(CSV_PATH):
 WINDOW = 50                       # timesteps per sample
 TRAIN_TEST_SPLIT = 0.2
 BATCH_SIZE = 64
-EPOCHS = 100                      # Increased slightly for better convergence
+EPOCHS = 20                   # Increased slightly for better convergence
 LR = 1e-3
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 SEED = 42
@@ -150,29 +150,48 @@ print(f"Dataset created: {X_array.shape} samples")
 X_train, X_test, Y_train, Y_test = train_test_split(X_array, Y_array, test_size=TRAIN_TEST_SPLIT, shuffle=False)
 
 # ---------- STEP 5: Neural Net ----------
-class AllocNet(nn.Module):
-    def __init__(self, num_assets, window, features=3, hidden=128):
+
+# hyperparams for memory-friendly run
+BATCH_SIZE = 16   # smaller batches use less memory
+CONV_CHANNELS = 8 # reduce from 32 -> 8
+HIDDEN = 64       # reduce hidden size
+
+# re-define a smaller model matching new hyperparams
+class AllocNetSmall(nn.Module):
+    def __init__(self, num_assets, window, features=3, conv_ch=CONV_CHANNELS, hidden=HIDDEN):
         super().__init__()
-        # Conv layer to extract temporal features per asset
-        self.conv = nn.Conv2d(features, 32, kernel_size=(3,1)) 
-        # Flatten size depends on window size after conv
-        # window - 3 + 1 = window - 2
+        self.conv = nn.Conv2d(features, conv_ch, kernel_size=(3,1)) 
         conv_out_h = window - 2
-        flat_size = 32 * conv_out_h * num_assets
-        
+        flat_size = conv_ch * conv_out_h * num_assets
+        # To avoid extremely large fc, project by a 1x1 conv over assets to shrink dimension first
+        # (optional: comment this if not desired)
+        # we'll insert a 1x1 conv to reduce asset dimension: Conv2d(in_channels=conv_ch, out_channels=conv_ch, kernel=(1,1))
+        self.shrink = nn.Conv2d(conv_ch, conv_ch, kernel_size=(1,1))
         self.fc1 = nn.Linear(flat_size, hidden)
         self.fc2 = nn.Linear(hidden, num_assets)
         self.dropout = nn.Dropout(0.2)
 
     def forward(self, x):
         # x: (batch, features, window, assets)
-        z = torch.relu(self.conv(x)) 
+        z = torch.relu(self.conv(x))           # (batch, conv_ch, window-2, assets)
+        z = torch.relu(self.shrink(z))         # small 1x1 projection
         z = z.view(z.size(0), -1)
         z = self.dropout(torch.relu(self.fc1(z)))
         w_raw = self.fc2(z)
-        w = torch.softmax(w_raw, dim=1) # Ensure weights sum to 1
+        w = torch.softmax(w_raw, dim=1)
         return w
 
+
+# Create Dataset class that keeps arrays on CPU and yields batches
+class TensorDatasetOnCPU(data.Dataset):
+    def __init__(self, X_np, Y_np):
+        self.X = X_np.astype(np.float32)  # keep as float32 on CPU
+        self.Y = Y_np.astype(np.float32)
+    def __len__(self):
+        return len(self.X)
+    def __getitem__(self, idx):
+        return self.X[idx], self.Y[idx]
+    
 # Updated Loss Function: The "Goldilocks" Tuning
 # Replace the existing loss_fn with this:
 # REPLACEMENT LOSS FUNCTION
@@ -196,68 +215,98 @@ def loss_fn(weights, next_returns):
     return loss
 class LossFunctions:
     @staticmethod
-    def explicit_log_return(weights, price_change_vector, prev_weights, commission=0.0025):
+    def explicit_log_return(weights, price_change_vector, prev_weights, commission=0.0025, epsilon=1e-8):
         """
-        Implementation of Eq. 21 from the paper "Deep Portfolio Management".
-        
-        weights: (batch, num_assets) -> The output of your neural net (w_t)
-        price_change_vector: (batch, num_assets) -> y_t = price_t / price_{t-1}
-        prev_weights: (batch, num_assets) -> w_{t-1} (from memory)
-        commission: transaction fee rate (e.g., 0.25%)
+        Robustized explicit log-return loss.
+        price_change_vector: can be either (1 + simple_returns) OR raw price-change factors.
+                              We will detect and convert if necessary.
+        weights, prev_weights: torch tensors, shape (batch, assets)
         """
-        
-        # 1. Calculate the portfolio value vector BEFORE transaction costs
-        # dot product of weights and price changes
-        # (batch_size, )
-        step_return = torch.sum(weights * price_change_vector, dim=1)
-        
-        # 2. Calculate Transaction Cost Factor (mu_t)
-        # The paper uses a recursive formula, but we can approximate it for stability:
-        # Cost = commission * sum(|w_t - w_{t-1}|)
-        # This is the cost of rebalancing.
-        turnover = torch.sum(torch.abs(weights - prev_weights), dim=1)
+        # ensure tensors
+        # price_change_vector expected > 0 (factors). If values look like small around zero (e.g. -0.01..0.01),
+        # convert to factors:
+        if price_change_vector.min() < 0.5:  # heuristic: if there exist values < 0.5 it's probably simple returns
+            y_factors = price_change_vector + 1.0
+        else:
+            y_factors = price_change_vector
+
+        # step_return = w_t dot y_factors (gives factor of portfolio growth per sample)
+        # But paper uses mu_t and w_{t-1}, we'll use standard approximate approach:
+        step_factor = torch.sum(weights * y_factors, dim=1)  # (batch,)
+        # turnover cost
+        turnover = torch.sum(torch.abs(weights - prev_weights), dim=1)  # (batch,)
         transaction_cost = commission * turnover
-        
-        # 3. Calculate Net Return
-        # The paper defines r_t = ln(mu_t * y_t * w_{t-1})
-        # Which simplifies roughly to: ln(step_return - transaction_cost)
-        
-        # Add epsilon to prevent log(0) or log(negative)
-        net_step_return = step_return - transaction_cost + 1e-8
-        
-        # 4. Logarithmic Return (The "Kelly" Logic)
-        log_return = torch.log(net_step_return)
-        
-        # 5. Loss = Negative Average Log Return
+
+        # net factor after cost: step_factor - cost (this must remain > 0)
+        # but subtracting cost from factor is not ideal (factor ~1.x, cost ~0.x). 
+        # Better: multiply factor by (1 - transaction_cost) OR subtract small amount
+        net_factor = step_factor * (1.0 - transaction_cost)
+        # clamp to avoid <= 0
+        net_factor_clamped = torch.clamp(net_factor, min=epsilon)
+
+        # Use log of net factor as reward; loss = negative mean log factor
+        log_return = torch.log(net_factor_clamped)
         loss = -torch.mean(log_return)
-        
+
+        # safe diagnostic: if loss is NaN, return a large positive value to avoid breaking training
+        if torch.isnan(loss):
+            # return a tensor of big loss so optimizer moves away
+            return torch.tensor(1e6, device=weights.device, dtype=weights.dtype)
         return loss
 
-# Setup Model
-model = AllocNet(num_assets, WINDOW).to(DEVICE)
+
+train_dataset = TensorDatasetOnCPU(X_train, Y_train)
+train_loader = data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=0, pin_memory=True)
+
+# instantiate smaller model
+model = AllocNetSmall(num_assets=num_assets, window=WINDOW).to(DEVICE)
 opt = optim.Adam(model.parameters(), lr=LR)
 
-# Training Loop
-X_train_t = torch.tensor(X_train, dtype=torch.float32).to(DEVICE)
-Y_train_t = torch.tensor(Y_train, dtype=torch.float32).to(DEVICE)
-X_test_t = torch.tensor(X_test, dtype=torch.float32).to(DEVICE)
+# convenience: function to move numpy batch to device
+def batch_to_device(batch):
+    xb_np, yb_np = batch
+    xb = torch.tensor(xb_np, dtype=torch.float32).to(DEVICE)  # (B, 3, W, A)
+    yb = torch.tensor(yb_np, dtype=torch.float32).to(DEVICE)
+    return xb, yb
 
-print("Training...")
+print("Batched training start. Using device:", DEVICE)
 for epoch in range(EPOCHS):
     model.train()
-    opt.zero_grad()
-    w = model(X_train_t)
-    loss = LossFunctions.explicit_log_return(w, Y_train_t, w)  # Assuming prev_weights = current weights for simplicity
-    loss.backward()
-    opt.step()
-    
-    if (epoch+1) % 10 == 0:
-        print(f"Epoch {epoch+1}/{EPOCHS} | Loss: {loss.item():.6f}")
+    epoch_loss = 0.0
+    count = 0
+    for batch in train_loader:
+        xb, yb = batch_to_device(batch)   # xb, yb are tensors on DEVICE
+        opt.zero_grad()
+        w = model(xb)                     # (batch, assets)
+        yb_factors = 1.0 + yb
+        # use prev_weights = w.detach() as a simple approximation
+        loss = LossFunctions.explicit_log_return(w, yb_factors, w.detach(), commission=0.0025)
+        # detect NaN
+        if torch.isnan(loss) or torch.isinf(loss):
+            print("WARNING: NaN/Inf loss encountered; skipping batch")
+            continue
+        loss.backward()
+        # gradient clipping
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        opt.step()
+        epoch_loss += loss.item() * xb.size(0)
+        count += xb.size(0)
+        # free GPU cache occasionally
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    avg_loss = epoch_loss / count
+    if (epoch + 1) % 10 == 0 or epoch == 0:
+        print(f"Epoch {epoch+1}/{EPOCHS} avg_loss={avg_loss:.6f}")
+# Save model
+torch.save(model.state_dict(), "alloc_net_small.pth")
 
 # ---------- STEP 6: Evaluation ----------
+# Minimal proper evaluation (convert numpy -> tensor and move to DEVICE)
 model.eval()
 with torch.no_grad():
-    w_test = model(X_test_t).cpu().numpy()
+    X_test_t = torch.tensor(X_test, dtype=torch.float32).to(DEVICE)   # convert + move
+    w_test = model(X_test_t).cpu().numpy()                           # forward + move back to CPU
+
 
 # Calculate cumulative returns
 pv_nn = [1.0]
@@ -305,9 +354,9 @@ l_norm_last = l_last / final_close
 # Build tensor (1 sample, 3 features, WINDOW, assets)
 X_final = np.stack([l_norm_last, h_norm_last, c_norm_last], axis=0)
 X_final_t = torch.tensor(X_final, dtype=torch.float32).unsqueeze(0).to(DEVICE)
-
 with torch.no_grad():
     future_weights = model(X_final_t).cpu().numpy().flatten()
+
 
 # Filter for significant allocations (> 1%)
 alloc_data = []
