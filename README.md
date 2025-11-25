@@ -21,11 +21,13 @@ This project moves beyond static formulas by utilizing **Deep Learning (Neural N
 * **Direct Optimization:** Instead of forecasting prices (which is error-prone), our model optimizes the *allocation weights* directly to maximize the Sharpe Ratio.
 
 ## Solution
-We have built a **Django-based API** that utilizes a PyTorch Neural Network to generate optimal portfolio allocations.
+<!-- We have built a **Django-based API** that utilizes a PyTorch Neural Network to generate optimal portfolio allocations.
 
 * **Algorithm:** Convolutional Neural Network (CNN) specifically tuned for time-series financial data.
 * **Objective Function:** A custom loss function that maximizes the **Sharpe Ratio** (Risk-Adjusted Return) while maintaining portfolio diversity via Entropy regularization.
-* **Delivery:** A REST API (documented with Swagger) that accepts a list of tickers and returns the optimal percentage allocation.
+* **Delivery:** A REST API (documented with Swagger) that accepts a list of tickers and returns the optimal percentage allocation. -->
+
+An AI investment engine that uses deep learning to maximize risk-adjusted returns through dynamic, non-linear asset allocation.
 <!-- 
 ### Expected Outcome
 * **Input:** A list of stock tickers (e.g., `['AAPL', 'MSFT', 'GOOG']`).
