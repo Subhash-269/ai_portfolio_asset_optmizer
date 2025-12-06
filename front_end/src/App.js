@@ -176,81 +176,222 @@ function AssetPerformanceTable({ data }) {
   );
 }
 
+function SP500StocksTable({ subsectors, subChecked, handleSubCheck }) {
+  return (
+    <div style={{
+      background: '#fff',
+      borderRadius: '1.5rem',
+      boxShadow: '0 2px 12px rgba(30,41,59,0.08)',
+      padding: '2rem',
+      margin: '0 auto',
+      maxWidth: '98%',
+      overflowX: 'auto',
+    }}>
+      <table className="data-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: 'transparent', borderRadius: '1.25rem', overflow: 'hidden' }}>
+        <thead>
+          <tr>
+            <th style={{ background: '#fff', width: '48px' }}></th>
+            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>S&P 500 Sector</th>
+            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>1Y</th>
+            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>3Y</th>
+            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>5Y</th>
+          </tr>
+        </thead>
+        <tbody>
+          {subsectors.map((sub, subIdx) => (
+            <tr key={sub.asset} style={{ background: '#f9fafb' }}>
+              <td style={{ textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={subChecked[subIdx]}
+                  onChange={() => handleSubCheck(subIdx)}
+                  style={{ width: '18px', height: '18px', accentColor: '#6366f1', marginRight: '0.5rem' }}
+                />
+              </td>
+              <td style={{ color: '#22223b', fontWeight: 400, fontSize: '1rem', padding: '0.75rem 1.5rem' }}>{sub.asset}</td>
+              <td style={{ background: sub.y1 > 0 ? '#d1fae5' : sub.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y1 > 0 ? '#065f46' : sub.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y1}%</td>
+              <td style={{ background: sub.y3 > 0 ? '#d1fae5' : sub.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y3 > 0 ? '#065f46' : sub.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y3}%</td>
+              <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : sub.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y5}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TemplatesPage() {
+  return (
+    <div className="dashboard-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2vw', minHeight: '70vh', background: '#f3f4f6' }}>
+      <div className="card" style={{ background: '#fff', borderRadius: '1.5rem', boxShadow: '0 2px 12px rgba(30,41,59,0.08)', padding: '2rem', margin: '0 auto', maxWidth: '900px' }}>
+        <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1.5rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif' }}>Templates</h2>
+        <p style={{ color: '#22223b', fontSize: '1.1rem', fontFamily: 'Poppins, Inter, sans-serif' }}>
+          Here you can manage and select portfolio templates. (Demo content)
+        </p>
+        <ul style={{ marginTop: '2rem', paddingLeft: 0, listStyle: 'none' }}>
+          <li style={{ background: '#f3f4f6', borderRadius: '1rem', padding: '1rem 1.5rem', marginBottom: '1rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif', fontWeight: 500 }}>Conservative Portfolio</li>
+          <li style={{ background: '#f3f4f6', borderRadius: '1rem', padding: '1rem 1.5rem', marginBottom: '1rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif', fontWeight: 500 }}>Balanced Portfolio</li>
+          <li style={{ background: '#f3f4f6', borderRadius: '1rem', padding: '1rem 1.5rem', marginBottom: '1rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif', fontWeight: 500 }}>Aggressive Portfolio</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function DashboardDemo() {
-  const [activeSegment, setActiveSegment] = React.useState(1);
-  const segments = ['Countries', 'Asset Classes', 'Sectors', 'Watchlist'];
+  const [activeSegment, setActiveSegment] = React.useState(0);
+  const segments = ['Asset Classes', 'S&P 500 Stocks', 'Composite'];
+  const subsectors = [
+    { asset: 'Communication Services', y1: 8.2, y3: 5.1, y5: 2.3 },
+    { asset: 'Consumer Discretionary', y1: 7.5, y3: 6.2, y5: 3.1 },
+    { asset: 'Consumer Staples', y1: 6.8, y3: 4.9, y5: 2.7 },
+    { asset: 'Energy', y1: 5.9, y3: 3.8, y5: 1.9 },
+    { asset: 'Financials', y1: 9.1, y3: 7.2, y5: 4.5 },
+    { asset: 'Health Care', y1: 10.3, y3: 8.7, y5: 5.6 },
+    { asset: 'Industrials', y1: 6.2, y3: 5.0, y5: 2.8 },
+    { asset: 'Information Technology', y1: 12.4, y3: 10.1, y5: 7.3 },
+    { asset: 'Materials', y1: 4.7, y3: 3.2, y5: 1.5 },
+    { asset: 'Real Estate', y1: 3.5, y3: 2.1, y5: 0.9 },
+    { asset: 'Utilities', y1: 2.8, y3: 1.7, y5: 0.6 },
+  ];
+  const [subChecked, setSubChecked] = React.useState(Array(subsectors.length).fill(true));
+  const isStockMarketChecked = subChecked.every(Boolean);
+  const [checked, setChecked] = React.useState(Array(assetPerformanceData.length).fill(false));
+
+  const handleCheck = (idx) => {
+    if (assetPerformanceData[idx].asset === 'US Stock Market (S&P 500)') {
+      const newVal = !isStockMarketChecked;
+      setSubChecked(Array(subsectors.length).fill(newVal));
+    } else {
+      setChecked((prev) => {
+        const updated = [...prev];
+        updated[idx] = !updated[idx];
+        return updated;
+      });
+    }
+  };
+
+  const handleSubCheck = (idx) => {
+    setSubChecked((prev) => {
+      const updated = [...prev];
+      updated[idx] = !updated[idx];
+      return updated;
+    });
+  };
 
   return (
     <div className="dashboard-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2vw' }}>
       <DashboardHeader />
       <SegmentedControl segments={segments} active={activeSegment} onChange={setActiveSegment} />
-      <div
-        className="card"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '2rem',
-          background: '#f3f4f6',
-          borderRadius: '2rem',
-          boxShadow: '0 2px 8px rgba(30,41,59,0.04)',
-          minHeight: '50vh',
-          alignItems: 'stretch',
-        }}
-      >
+      {activeSegment === 0 ? (
         <div
+          className="card"
           style={{
-            flex: '1 1 0',
-            minWidth: '300px',
-            maxWidth: '100%',
-            minHeight: '220px',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '50%',
-            boxSizing: 'border-box',
+            flexWrap: 'wrap',
+            gap: '2rem',
+            background: '#f3f4f6',
+            borderRadius: '2rem',
+            boxShadow: '0 2px 8px rgba(30,41,59,0.04)',
+            minHeight: '50vh',
+            alignItems: 'stretch',
           }}
         >
-          {/* Placeholder for chart */}
           <div
             style={{
-              width: '100%',
-              height: '100%',
-              background: '#f3f4f6',
-              borderRadius: '1.25rem',
+              flex: '1 1 0',
+              minWidth: '300px',
+              maxWidth: '100%',
+              minHeight: '220px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#8b5cf6',
-              fontWeight: 600,
-              fontSize: '1.1rem',
+              width: '50%',
+              boxSizing: 'border-box',
             }}
           >
-            [Chart Area]
+            {/* Placeholder for chart */}
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                background: '#f3f4f6',
+                borderRadius: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#8b5cf6',
+                fontWeight: 600,
+                fontSize: '1.1rem',
+              }}
+            >
+              [Chart Area]
+            </div>
+          </div>
+          <div
+            style={{
+              flex: '1 1 0',
+              minWidth: '300px',
+              maxWidth: '100%',
+              width: '50%',
+              boxSizing: 'border-box',
+              overflowX: 'visible',
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '2.2rem',
+                fontWeight: 700,
+                marginBottom: '1rem',
+                color: '#22223b',
+              }}
+            >
+              Asset Class Performance
+            </h2>
+            <AssetPerformanceTable data={assetPerformanceData} />
           </div>
         </div>
-        <div
-          style={{
-            flex: '1 1 0',
-            minWidth: '300px',
-            maxWidth: '100%',
-            width: '50%',
-            boxSizing: 'border-box',
-            overflowX: 'visible',
-          }}
-        >
-          <h2
+      ) : activeSegment === 1 ? (
+        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', background: '#f3f4f6', borderRadius: '2rem', boxShadow: '0 2px 8px rgba(30,41,59,0.04)', minHeight: '50vh', alignItems: 'stretch', padding: '2rem' }}>
+          <div
             style={{
-              fontSize: '2.2rem',
-              fontWeight: 700,
-              marginBottom: '1rem',
-              color: '#22223b',
+              flex: '1 1 0',
+              minWidth: '300px',
+              maxWidth: '100%',
+              minHeight: '220px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '50%',
+              boxSizing: 'border-box',
             }}
           >
-            Asset Class Performance
-          </h2>
-          <AssetPerformanceTable data={assetPerformanceData} />
+            {/* Placeholder for chart */}
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                background: '#f3f4f6',
+                borderRadius: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#8b5cf6',
+                fontWeight: 600,
+                fontSize: '1.1rem',
+              }}
+            >
+              [Chart Area]
+            </div>
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', width: '50%', boxSizing: 'border-box', overflowX: 'visible' }}>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1rem', color: '#22223b' }}>S&P 500 Sectors</h2>
+            <SP500StocksTable subsectors={subsectors} subChecked={subChecked} handleSubCheck={setSubChecked} />
+          </div>
         </div>
-      </div>
+      ) : (
+        <TemplatesPage />
+      )}
       <style>{`
         @media (max-width: 900px) {
           .dashboard-container {
