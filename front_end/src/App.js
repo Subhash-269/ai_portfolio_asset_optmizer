@@ -60,8 +60,40 @@ function SegmentedControl({ segments, active, onChange }) {
   );
 }
 
-function AssetPerformanceTable({ data }) {
-  const [checked, setChecked] = React.useState(Array(data.length).fill(false));
+function PortfolioResults({ selectedAssets, selectedSubsectors }) {
+  // Simulate model results
+  const results = [
+    { asset: 'Gold', weight: 0.18 },
+    { asset: 'US Stock Market (S&P 500)', weight: 0.32 },
+    { asset: 'Commodities', weight: 0.12 },
+    { asset: 'US Bonds', weight: 0.38 },
+  ];
+  return (
+    <div className="dashboard-container" style={{ maxWidth: '900px', margin: '0 auto', padding: '2vw', minHeight: '70vh', background: '#f3f4f6' }}>
+      <div className="card" style={{ background: '#fff', borderRadius: '1.5rem', boxShadow: '0 2px 12px rgba(30,41,59,0.08)', padding: '2rem', margin: '0 auto', maxWidth: '700px' }}>
+        <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1.5rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif' }}>Portfolio Results</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Asset</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            {results.map(r => (
+              <tr key={r.asset}>
+                <td style={{ padding: '0.75rem 1rem', color: '#22223b' }}>{r.asset}</td>
+                <td style={{ padding: '0.75rem 1rem', color: '#22223b' }}>{(r.weight * 100).toFixed(2)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio }) {
   const [expanded, setExpanded] = React.useState(false);
   const subsectors = [
     { asset: 'Communication Services', y1: 8.2, y3: 5.1, y5: 2.3 },
@@ -79,17 +111,10 @@ function AssetPerformanceTable({ data }) {
   const [subChecked, setSubChecked] = React.useState(Array(subsectors.length).fill(true));
   const isStockMarketChecked = subChecked.every(Boolean);
 
-  const handleCheck = (idx) => {
-    if (data[idx].asset === 'US Stock Market (S&P 500)') {
-      const newVal = !isStockMarketChecked;
-      setSubChecked(Array(subsectors.length).fill(newVal));
-    } else {
-      setChecked((prev) => {
-        const updated = [...prev];
-        updated[idx] = !updated[idx];
-        return updated;
-      });
-    }
+  // Select all/deselect all logic for S&P 500
+  const handleSP500Check = () => {
+    const newVal = !isStockMarketChecked;
+    setSubChecked(Array(subsectors.length).fill(newVal));
   };
 
   const handleSubCheck = (idx) => {
@@ -100,79 +125,114 @@ function AssetPerformanceTable({ data }) {
     });
   };
 
+  // Button enabled if any checked OR any subChecked
+  const isAnySelected = checked.some(Boolean) || subChecked.some(Boolean);
+
   return (
-    <div style={{
-      background: '#fff',
-      borderRadius: '1.5rem',
-      boxShadow: '0 2px 12px rgba(30,41,59,0.08)',
-      padding: '2rem',
-      margin: '0 auto',
-      maxWidth: '98%',
-      overflowX: 'auto',
-    }}>
-      <table className="data-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: 'transparent', borderRadius: '1.25rem', overflow: 'hidden' }}>
-        <thead>
-          <tr>
-            <th style={{ background: '#fff', width: '48px' }}></th>
-            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>Asset Class</th>
-            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>1Y</th>
-            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>3Y</th>
-            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>5Y</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row, idx) => (
-            <React.Fragment key={row.asset}>
-              <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ textAlign: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={row.asset === 'US Stock Market (S&P 500)' ? isStockMarketChecked : checked[idx]}
-                    onChange={() => handleCheck(idx)}
-                    style={{ width: '20px', height: '20px', accentColor: '#6366f1', cursor: 'pointer' }}
-                  />
-                </td>
-                <td style={{ color: '#22223b', fontWeight: 500, fontSize: '1.1rem', padding: '1rem 1.5rem' }}>
-                  {row.asset === 'US Stock Market (S&P 500)' ? (
-                    <span style={{ position: 'relative' }}>
-                      <span
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => setExpanded((v) => !v)}
-                      >
-                        US Stock Market (S&P 500) {expanded ? '▲' : '▼'}
-                      </span>
-                    </span>
-                  ) : (
-                    row.asset
-                  )}
-                </td>
-                <td style={{ background: row.y1 > 0 ? '#d1fae5' : row.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y1 > 0 ? '#065f46' : row.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y1}%</td>
-                <td style={{ background: row.y3 > 0 ? '#d1fae5' : row.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y3 > 0 ? '#065f46' : row.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y3}%</td>
-                <td style={{ background: row.y5 > 0 ? '#d1fae5' : row.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y5 > 0 ? '#065f46' : row.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y5}%</td>
-              </tr>
-              {row.asset === 'US Stock Market (S&P 500)' && expanded && (
-                subsectors.map((sub, subIdx) => (
-                  <tr key={sub.asset} style={{ background: '#f9fafb' }}>
-                    <td style={{ textAlign: 'center' }}>
+    <>
+      <div style={{
+        background: '#fff',
+        borderRadius: '1.5rem',
+        boxShadow: '0 2px 12px rgba(30,41,59,0.08)',
+        padding: '2rem',
+        margin: '0 auto',
+        maxWidth: '98%',
+        overflowX: 'auto',
+      }}>
+        <table className="data-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: 'transparent', borderRadius: '1.25rem', overflow: 'hidden' }}>
+          <thead>
+            <tr>
+              <th style={{ background: '#fff', width: '48px' }}></th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>Asset Class</th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>1Y</th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>3Y</th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>5Y</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, idx) => (
+              <React.Fragment key={row.asset}>
+                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    {row.asset === 'US Stock Market (S&P 500)' ? (
                       <input
                         type="checkbox"
-                        checked={subChecked[subIdx]}
-                        onChange={() => handleSubCheck(subIdx)}
-                        style={{ width: '18px', height: '18px', accentColor: '#6366f1', marginRight: '0.5rem' }}
+                        checked={isStockMarketChecked}
+                        onChange={handleSP500Check}
+                        style={{ width: '20px', height: '20px', accentColor: '#6366f1', cursor: 'pointer' }}
                       />
-                    </td>
-                    <td style={{ color: '#22223b', fontWeight: 400, fontSize: '1rem', padding: '0.75rem 1.5rem', paddingLeft: '2.5rem' }}>{sub.asset}</td>
-                    <td style={{ background: sub.y1 > 0 ? '#d1fae5' : sub.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y1 > 0 ? '#065f46' : sub.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y1}%</td>
-                    <td style={{ background: sub.y3 > 0 ? '#d1fae5' : sub.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y3 > 0 ? '#065f46' : sub.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y3}%</td>
-                    <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : sub.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y5}%</td>
-                  </tr>
-                ))
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={checked[idx]}
+                        onChange={() => handleCheck(idx)}
+                        style={{ width: '20px', height: '20px', accentColor: '#6366f1', cursor: 'pointer' }}
+                      />
+                    )}
+                  </td>
+                  <td style={{ color: '#22223b', fontWeight: 500, fontSize: '1.1rem', padding: '1rem 1.5rem' }}>
+                    {row.asset === 'US Stock Market (S&P 500)' ? (
+                      <span style={{ position: 'relative' }}>
+                        <span
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setExpanded((v) => !v)}
+                        >
+                          US Stock Market (S&P 500) {expanded ? '▲' : '▼'}
+                        </span>
+                      </span>
+                    ) : (
+                      row.asset
+                    )}
+                  </td>
+                  <td style={{ background: row.y1 > 0 ? '#d1fae5' : row.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y1 > 0 ? '#065f46' : row.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y1}%</td>
+                  <td style={{ background: row.y3 > 0 ? '#d1fae5' : row.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y3 > 0 ? '#065f46' : row.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y3}%</td>
+                  <td style={{ background: row.y5 > 0 ? '#d1fae5' : row.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y5 > 0 ? '#065f46' : row.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y5}%</td>
+                </tr>
+                {row.asset === 'US Stock Market (S&P 500)' && expanded && (
+                  subsectors.map((sub, subIdx) => (
+                    <tr key={sub.asset} style={{ background: '#f9fafb' }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={subChecked[subIdx]}
+                          onChange={() => handleSubCheck(subIdx)}
+                          style={{ width: '18px', height: '18px', accentColor: '#6366f1', marginRight: '0.5rem' }}
+                        />
+                      </td>
+                      <td style={{ color: '#22223b', fontWeight: 400, fontSize: '1rem', padding: '0.75rem 1.5rem', paddingLeft: '2.5rem' }}>{sub.asset}</td>
+                      <td style={{ background: sub.y1 > 0 ? '#d1fae5' : sub.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y1 > 0 ? '#065f46' : sub.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y1}%</td>
+                      <td style={{ background: sub.y3 > 0 ? '#d1fae5' : sub.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y3 > 0 ? '#065f46' : sub.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y3}%</td>
+                      <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : sub.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y5}%</td>
+                    </tr>
+                  ))
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
+        <button
+          className="btn-primary"
+          disabled={!isAnySelected}
+          onClick={isAnySelected ? () => onCreatePortfolio({ checked, subChecked }) : undefined}
+          style={{
+            background: !isAnySelected ? '#e5e7eb' : '#22223b',
+            color: !isAnySelected ? '#888' : '#fff',
+            border: 'none',
+            borderRadius: '1rem',
+            padding: '0.75rem 2rem',
+            fontSize: '1.1rem',
+            fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(30,41,59,0.10)',
+            cursor: !isAnySelected ? 'not-allowed' : 'pointer',
+            transition: 'background 0.2s, color 0.2s',
+          }}
+        >
+          Create a Portfolio
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -239,8 +299,15 @@ function TemplatesPage() {
 }
 
 function DashboardDemo() {
+
   const [activeSegment, setActiveSegment] = React.useState(0);
-  const segments = ['Asset Classes', 'S&P 500 Stocks', 'Composite'];
+  const segments = ['Asset Classes', 'S&P 500 Stocks', 'Composite', 'Portfolios'];
+  const [checked, setChecked] = React.useState(Array(assetPerformanceData.length).fill(false));
+  const [showPortfolio, setShowPortfolio] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [portfolioData, setPortfolioData] = React.useState(null);
+
+  // S&P 500 subsectors state lifted up
   const subsectors = [
     { asset: 'Communication Services', y1: 8.2, y3: 5.1, y5: 2.3 },
     { asset: 'Consumer Discretionary', y1: 7.5, y3: 6.2, y5: 3.1 },
@@ -256,8 +323,8 @@ function DashboardDemo() {
   ];
   const [subChecked, setSubChecked] = React.useState(Array(subsectors.length).fill(true));
   const isStockMarketChecked = subChecked.every(Boolean);
-  const [checked, setChecked] = React.useState(Array(assetPerformanceData.length).fill(false));
 
+  // Selection logic
   const handleCheck = (idx) => {
     if (assetPerformanceData[idx].asset === 'US Stock Market (S&P 500)') {
       const newVal = !isStockMarketChecked;
@@ -279,114 +346,97 @@ function DashboardDemo() {
     });
   };
 
+  const handleCreatePortfolio = ({ checked, subChecked }) => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setShowPortfolio(true);
+      setActiveSegment(3); // Switch to Portfolios tab
+      setPortfolioData({ checked, subChecked });
+    }, 2000);
+  };
+
   return (
     <div className="dashboard-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2vw' }}>
       <DashboardHeader />
       <SegmentedControl segments={segments} active={activeSegment} onChange={setActiveSegment} />
-      {activeSegment === 0 ? (
-        <div
-          className="card"
-          style={{
+      {/* Loading overlay */}
+      {loading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(34,34,59,0.15)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <div style={{
             display: 'flex',
-            flexWrap: 'wrap',
-            gap: '2rem',
-            background: '#f3f4f6',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(255,255,255,0.85)',
             borderRadius: '2rem',
-            boxShadow: '0 2px 8px rgba(30,41,59,0.04)',
-            minHeight: '50vh',
-            alignItems: 'stretch',
-          }}
-        >
-          <div
-            style={{
-              flex: '1 1 0',
-              minWidth: '300px',
-              maxWidth: '100%',
-              minHeight: '220px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '50%',
-              boxSizing: 'border-box',
-            }}
-          >
-            {/* Placeholder for chart */}
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                background: '#f3f4f6',
-                borderRadius: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#8b5cf6',
-                fontWeight: 600,
-                fontSize: '1.1rem',
-              }}
-            >
-              [Chart Area]
+            boxShadow: '0 2px 24px rgba(30,41,59,0.12)',
+            padding: '2.5rem 3rem',
+          }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animation: 'spin 1.2s linear infinite' }}>
+                <circle cx="32" cy="32" r="28" stroke="#6366f1" strokeWidth="8" strokeDasharray="44 44" strokeDashoffset="0" />
+                <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+              </svg>
+            </div>
+            <div style={{ fontSize: '1.3rem', color: '#22223b', fontWeight: 600, fontFamily: 'Poppins, Inter, sans-serif' }}>
+              Training model and generating portfolio weights...
             </div>
           </div>
-          <div
-            style={{
-              flex: '1 1 0',
-              minWidth: '300px',
-              maxWidth: '100%',
-              width: '50%',
-              boxSizing: 'border-box',
-              overflowX: 'visible',
-            }}
-          >
-            <h2
-              style={{
-                fontSize: '2.2rem',
-                fontWeight: 700,
-                marginBottom: '1rem',
-                color: '#22223b',
-              }}
-            >
-              Asset Class Performance
-            </h2>
-            <AssetPerformanceTable data={assetPerformanceData} />
-          </div>
         </div>
-      ) : activeSegment === 1 ? (
-        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', background: '#f3f4f6', borderRadius: '2rem', boxShadow: '0 2px 8px rgba(30,41,59,0.04)', minHeight: '50vh', alignItems: 'stretch', padding: '2rem' }}>
-          <div
-            style={{
-              flex: '1 1 0',
-              minWidth: '300px',
-              maxWidth: '100%',
-              minHeight: '220px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '50%',
-              boxSizing: 'border-box',
-            }}
-          >
+      )}
+      {/* ...existing code... */}
+      {activeSegment === 3 ? (
+        !loading ? (
+          <PortfolioResults selectedAssets={portfolioData?.checked} selectedSubsectors={portfolioData?.subChecked} />
+        ) : null
+      ) : activeSegment === 0 ? (
+        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', background: '#f3f4f6', borderRadius: '2rem', boxShadow: '0 2px 8px rgba(30,41,59,0.04)', minHeight: '50vh', alignItems: 'stretch' }}>
+          <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
             {/* Placeholder for chart */}
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                background: '#f3f4f6',
-                borderRadius: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#8b5cf6',
-                fontWeight: 600,
-                fontSize: '1.1rem',
-              }}
-            >
+            <div style={{ width: '100%', height: '100%', background: '#f3f4f6', borderRadius: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6', fontWeight: 600, fontSize: '1.1rem' }}>
               [Chart Area]
             </div>
           </div>
           <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', width: '50%', boxSizing: 'border-box', overflowX: 'visible' }}>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1rem', color: '#22223b' }}>S&P 500 Sectors</h2>
-            <SP500StocksTable subsectors={subsectors} subChecked={subChecked} handleSubCheck={setSubChecked} />
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1rem', color: '#22223b' }}>
+              Asset Class Performance
+            </h2>
+            <AssetPerformanceTable
+              data={assetPerformanceData}
+              checked={checked}
+              handleCheck={handleCheck}
+              onCreatePortfolio={handleCreatePortfolio}
+              subsectors={subsectors}
+              subChecked={subChecked}
+              setSubChecked={setSubChecked}
+            />
+          </div>
+        </div>
+      ) : activeSegment === 1 ? (
+        // S&P 500 Stocks tab content (reuse your S&P 500 table and chart layout)
+        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', background: '#f3f4f6', borderRadius: '2rem', boxShadow: '0 2px 8px rgba(30,41,59,0.04)', minHeight: '50vh', alignItems: 'stretch', padding: '2rem' }}>
+          <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
+            <div style={{ width: '100%', height: '100%', background: '#f3f4f6', borderRadius: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6', fontWeight: 600, fontSize: '1.1rem' }}>
+              [Chart Area]
+            </div>
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', width: '50%', boxSizing: 'border-box', overflowX: 'visible' }}>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1rem', color: '#22223b' }}>
+              S&P 500 Sectors
+            </h2>
+            <SP500StocksTable subsectors={subsectors} subChecked={subChecked} handleSubCheck={handleSubCheck} />
           </div>
         </div>
       ) : (
@@ -413,9 +463,6 @@ function DashboardDemo() {
           }
           .data-table th, .data-table td {
             padding: 0.5rem 0.5rem !important;
-            font-size: 0.9rem !important;
-          }
-          .data-table {
             font-size: 0.9rem !important;
           }
         }
