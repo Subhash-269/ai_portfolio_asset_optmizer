@@ -123,22 +123,9 @@ function PortfolioResults({ result }) {
   );
 }
 
-function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio }) {
+function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, sp500Averages, subsectors, subChecked, setSubChecked }) {
   const [expanded, setExpanded] = React.useState(false);
-  const subsectors = [
-    { asset: 'Communication Services', y1: 8.2, y3: 5.1, y5: 2.3 },
-    { asset: 'Consumer Discretionary', y1: 7.5, y3: 6.2, y5: 3.1 },
-    { asset: 'Consumer Staples', y1: 6.8, y3: 4.9, y5: 2.7 },
-    { asset: 'Energy', y1: 5.9, y3: 3.8, y5: 1.9 },
-    { asset: 'Financials', y1: 9.1, y3: 7.2, y5: 4.5 },
-    { asset: 'Health Care', y1: 10.3, y3: 8.7, y5: 5.6 },
-    { asset: 'Industrials', y1: 6.2, y3: 5.0, y5: 2.8 },
-    { asset: 'Information Technology', y1: 12.4, y3: 10.1, y5: 7.3 },
-    { asset: 'Materials', y1: 4.7, y3: 3.2, y5: 1.5 },
-    { asset: 'Real Estate', y1: 3.5, y3: 2.1, y5: 0.9 },
-    { asset: 'Utilities', y1: 2.8, y3: 1.7, y5: 0.6 },
-  ];
-  const [subChecked, setSubChecked] = React.useState(Array(subsectors.length).fill(true));
+  const isSubsectorsProvided = Array.isArray(subsectors) && subsectors.length > 0;
   const isStockMarketChecked = subChecked.every(Boolean);
 
   // Select all/deselect all logic for S&P 500
@@ -214,12 +201,16 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio }
                       row.asset
                     )}
                   </td>
-                  <td style={{ background: row.y1 > 0 ? '#d1fae5' : row.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y1 > 0 ? '#065f46' : row.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y1}%</td>
-                  <td style={{ background: row.y3 > 0 ? '#d1fae5' : row.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y3 > 0 ? '#065f46' : row.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y3}%</td>
-                  <td style={{ background: row.y5 > 0 ? '#d1fae5' : row.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: row.y5 > 0 ? '#065f46' : row.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{row.y5}%</td>
+                    {(() => { const vals = (row.asset === 'US Stock Market (S&P 500)' && sp500Averages) ? sp500Averages : { y1: row.y1, y3: row.y3, y5: row.y5 }; return (
+                    <>
+                      <td style={{ background: vals.y1 > 0 ? '#d1fae5' : vals.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y1 > 0 ? '#065f46' : vals.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{vals.y1}%</td>
+                      <td style={{ background: vals.y3 > 0 ? '#d1fae5' : vals.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y3 > 0 ? '#065f46' : vals.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{vals.y3}%</td>
+                      <td style={{ background: vals.y5 > 0 ? '#d1fae5' : vals.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y5 > 0 ? '#065f46' : vals.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{vals.y5}%</td>
+                    </>
+                  ); })()}
                 </tr>
-                {row.asset === 'US Stock Market (S&P 500)' && expanded && (
-                  subsectors.map((sub, subIdx) => (
+                  {row.asset === 'US Stock Market (S&P 500)' && expanded && isSubsectorsProvided && (
+                    subsectors.map((sub, subIdx) => (
                     <tr key={sub.asset} style={{ background: '#f9fafb' }}>
                       <td style={{ textAlign: 'center' }}>
                         <input
@@ -336,22 +327,54 @@ function DashboardDemo() {
   const [showPortfolio, setShowPortfolio] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [portfolioData, setPortfolioData] = React.useState(null);
+  const [sectorReturns, setSectorReturns] = React.useState(null);
+  const [sp500Averages, setSp500Averages] = React.useState(null);
 
-  // S&P 500 subsectors state lifted up
-  const subsectors = [
-    { asset: 'Communication Services', y1: 8.2, y3: 5.1, y5: 2.3 },
-    { asset: 'Consumer Discretionary', y1: 7.5, y3: 6.2, y5: 3.1 },
-    { asset: 'Consumer Staples', y1: 6.8, y3: 4.9, y5: 2.7 },
-    { asset: 'Energy', y1: 5.9, y3: 3.8, y5: 1.9 },
-    { asset: 'Financials', y1: 9.1, y3: 7.2, y5: 4.5 },
-    { asset: 'Health Care', y1: 10.3, y3: 8.7, y5: 5.6 },
-    { asset: 'Industrials', y1: 6.2, y3: 5.0, y5: 2.8 },
-    { asset: 'Information Technology', y1: 12.4, y3: 10.1, y5: 7.3 },
-    { asset: 'Materials', y1: 4.7, y3: 3.2, y5: 1.5 },
-    { asset: 'Real Estate', y1: 3.5, y3: 2.1, y5: 0.9 },
-    { asset: 'Utilities', y1: 2.8, y3: 1.7, y5: 0.6 },
-  ];
-  const [subChecked, setSubChecked] = React.useState(Array(subsectors.length).fill(true));
+  // Configure API base to work in dev (CRA) and production
+  const API_BASE = process.env.REACT_APP_API_BASE || '';
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+    console.log('[DashboardDemo] Fetching sector returns from', `${API_BASE}/model/sp500/gics-returns/`);
+    fetch(`${API_BASE}/model/sp500/gics-returns/`, { signal: controller.signal })
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch sector returns')))
+      .then(data => {
+        console.log('[DashboardDemo] Sector returns response:', data);
+        if (Array.isArray(data)) {
+          setSectorReturns(data);
+          const sum = data.reduce((acc, s) => ({
+            y1: acc.y1 + (Number(s.y1) || 0),
+            y3: acc.y3 + (Number(s.y3) || 0),
+            y5: acc.y5 + (Number(s.y5) || 0),
+          }), { y1: 0, y3: 0, y5: 0 });
+          const n = data.length || 1;
+          setSp500Averages({
+            y1: +(sum.y1 / n).toFixed(2),
+            y3: +(sum.y3 / n).toFixed(2),
+            y5: +(sum.y5 / n).toFixed(2),
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('[DashboardDemo] Fetch sector returns error:', err);
+      });
+    return () => controller.abort();
+  }, []);
+
+  // S&P 500 subsectors derived from backend sector returns
+  const subsectors = React.useMemo(() => {
+    if (!Array.isArray(sectorReturns) || sectorReturns.length === 0) return [];
+    return sectorReturns.map(s => ({
+      asset: s.sector,
+      y1: Number(s.y1),
+      y3: Number(s.y3),
+      y5: Number(s.y5),
+    }));
+  }, [sectorReturns]);
+  const [subChecked, setSubChecked] = React.useState([]);
+  React.useEffect(() => {
+    setSubChecked(Array(subsectors.length).fill(true));
+  }, [subsectors.length]);
   const isStockMarketChecked = subChecked.every(Boolean);
 
   // Selection logic
@@ -384,6 +407,13 @@ function DashboardDemo() {
       setActiveSegment(3); // Switch to Portfolios tab
       setPortfolioData({ checked, subChecked });
     }, 2000);
+  };
+
+  const getRowVals = (row) => {
+    if (row.asset === 'US Stock Market (S&P 500)' && sp500Averages) {
+      return sp500Averages;
+    }
+    return { y1: row.y1, y3: row.y3, y5: row.y5 };
   };
 
   return (
