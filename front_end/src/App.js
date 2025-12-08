@@ -1,4 +1,5 @@
 import React from 'react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 
 const assetPerformanceData = [
   { asset: 'Gold', y1: 57.94, y3: 33.02, y5: 18.40 },
@@ -64,14 +65,20 @@ function PortfolioResults({ result }) {
   const hasApi = result && Array.isArray(result.portfolio);
   const sectors = hasApi ? result.sectors || [] : [];
   const tickersUsed = hasApi ? result.tickers_used || [] : [];
-  const portfolio = hasApi
-    ? [...result.portfolio].sort((a, b) => b.allocation - a.allocation)
-    : [
-        { ticker: 'Gold', allocation: 18, sector: 'Commodities' },
-        { ticker: 'S&P 500', allocation: 32, sector: 'Equity' },
-        { ticker: 'Commodities', allocation: 12, sector: 'Commodities' },
-        { ticker: 'US Bonds', allocation: 38, sector: 'Fixed Income' },
-      ];
+  const companiesUsedCount = hasApi ? (Array.isArray(result.tickers_used) ? result.tickers_used.length : 0) : 0;
+  const portfolio = hasApi ? [...result.portfolio].sort((a, b) => b.allocation - a.allocation) : [];
+
+  const sectorDistribution = React.useMemo(() => {
+    const agg = {};
+    portfolio.forEach((row) => {
+      const sec = row.sector || 'Unknown';
+      const val = Number(row.allocation) || 0;
+      agg[sec] = (agg[sec] || 0) + val;
+    });
+    return Object.entries(agg).map(([name, value]) => ({ name, value }));
+  }, [portfolio]);
+
+  const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#14b8a6', '#f43f5e', '#84cc16', '#a78bfa'];
 
   return (
     <div className="dashboard-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '2vw', minHeight: '70vh', background: '#f3f4f6' }}>
@@ -89,35 +96,54 @@ function PortfolioResults({ result }) {
           </div>
         )}
 
-        {hasApi && tickersUsed.length > 0 && (
+        {hasApi && (
           <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Tickers Used</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {tickersUsed.map(t => (
-                <span key={t} style={{ background: '#eef2ff', color: '#3730a3', borderRadius: '0.6rem', padding: '0.35rem 0.6rem', fontSize: '0.9rem', fontWeight: 600 }}>{t}</span>
-              ))}
+            <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Companies Data Used</div>
+            <div style={{ color: '#22223b', fontSize: '1rem', fontWeight: 600 }}>{companiesUsedCount}</div>
+          </div>
+        )}
+
+        {hasApi && sectorDistribution.length > 0 && (
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ flex: '1 1 0', minWidth: '280px', height: '280px' }}>
+              <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Sector Distribution</div>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={sectorDistribution} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2} stroke="#fff" labelLine={false} label={({ value }) => `${Number(value).toFixed(1)}%`}>
+                    {sectorDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => `${Number(v).toFixed(2)}%`} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
         )}
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Ticker</th>
-              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Sector</th>
-              <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Allocation</th>
-            </tr>
-          </thead>
-          <tbody>
-            {portfolio.map(row => (
-              <tr key={`${row.ticker}-${row.sector}`}>
-                <td style={{ padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>{row.ticker}</td>
-                <td style={{ padding: '0.75rem 1rem', color: '#22223b' }}>{row.sector}</td>
-                <td style={{ padding: '0.75rem 1rem', color: '#22223b', textAlign: 'right' }}>{`${Number(row.allocation).toFixed(2)}%`}</td>
+        {hasApi && portfolio.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Company</th>
+                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Sector</th>
+                <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Allocation</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {portfolio.map(row => (
+                <tr key={`${row.ticker}-${row.sector}`}>
+                  <td style={{ padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>{row.abbr || row.ticker}</td>
+                  <td style={{ padding: '0.75rem 1rem', color: '#22223b' }}>{row.sector}</td>
+                  <td style={{ padding: '0.75rem 1rem', color: '#22223b', textAlign: 'right' }}>{`${Number(row.allocation).toFixed(2)}%`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ marginTop: '0.5rem', color: '#6b7280' }}>No portfolio results available.</div>
+        )}
       </div>
     </div>
   );
@@ -399,14 +425,30 @@ function DashboardDemo() {
     });
   };
 
-  const handleCreatePortfolio = ({ checked, subChecked }) => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+  const handleCreatePortfolio = async ({ checked, subChecked }) => {
+    try {
+      setLoading(true);
+      // Determine selected S&P 500 sectors
+      const selectedSectors = subsectors
+        .filter((_, idx) => subChecked[idx])
+        .map(s => s.asset);
+
+      const res = await fetch(`${API_BASE}/model/train_by_sectors/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sectors: selectedSectors }),
+      });
+      if (!res.ok) throw new Error('Training request failed');
+      const result = await res.json();
+
+      setPortfolioData({ result });
       setShowPortfolio(true);
-      setActiveSegment(3); // Switch to Portfolios tab
-      setPortfolioData({ checked, subChecked });
-    }, 2000);
+      setActiveSegment(3);
+    } catch (err) {
+      console.error('CreatePortfolio error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getRowVals = (row) => {
