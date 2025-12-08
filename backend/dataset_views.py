@@ -77,15 +77,22 @@ def sp500_gics_sectors(request):
             if c in df.columns:
                 gics_col = c
                 break
+        abbr_col = None
+        for c in ['Security', 'security', 'SECURITY']:
+            if c in df.columns:
+                abbr_col = c
+                break
         if sym_col is None or gics_col is None:
             return JsonResponse({'error': 'Required columns not found in CSV'}, status=500)
         # Build mapping Symbol -> GICS Sector
         mapper = {}
-        for _, row in df[[sym_col, gics_col]].dropna().iterrows():
+        use_cols = [sym_col, gics_col] + ([abbr_col] if abbr_col else [])
+        for _, row in df[use_cols].dropna().iterrows():
             sym = str(row[sym_col]).strip()
             gics = str(row[gics_col]).strip()
+            abbr = str(row[abbr_col]).strip() if abbr_col else ''
             if sym and gics:
-                mapper[sym] = gics
+                mapper[sym] = {'sector': gics, 'abbr': abbr}
         # Save mapper
         try:
             with open(mapper_path, 'w', encoding='utf-8') as f:
@@ -94,7 +101,11 @@ def sp500_gics_sectors(request):
             # non-fatal; proceed without saving
             pass
     # Return unique sectors
-    values = sorted(set(v for v in mapper.values() if str(v).strip()))
+    def _sector_of(val):
+        if isinstance(val, dict):
+            return str(val.get('sector', '')).strip()
+        return str(val).strip()
+    values = sorted(set(_sector_of(v) for v in mapper.values() if _sector_of(v)))
     return JsonResponse({'values': values})
 
 @swagger_auto_schema(
@@ -162,8 +173,9 @@ def gics_sector_returns(request):
     # Aggregate equal-weight by sector
     from collections import defaultdict
     sector_to_tickers = defaultdict(list)
-    for sym, sector in mapper.items():
-        if sym in pivot.columns:
+    for sym, val in mapper.items():
+        sector = val.get('sector') if isinstance(val, dict) else val
+        if sym in pivot.columns and sector:
             sector_to_tickers[sector].append(sym)
 
     results = []
