@@ -1,5 +1,43 @@
 import React from 'react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
+// Custom legend enabling hover highlight
+function HoverLegend({ payload, onHover, onLeave }) {
+  if (!payload) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem' }}>
+      {payload.map((item) => (
+        <div
+          key={item.value}
+          onMouseEnter={() => onHover && onHover(item.value)}
+          onMouseLeave={() => onLeave && onLeave()}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', color: '#374151', fontSize: '0.85rem' }}
+        >
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, display: 'inline-block' }}></span>
+          <span>{item.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+// Compact tooltip for multi-series line chart
+function CompactTooltip({ active, payload, label }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const dateStr = (() => { try { return new Date(label).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }); } catch { return label; } })();
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '0.5rem', boxShadow: '0 2px 8px rgba(30,41,59,0.08)', padding: '0.5rem 0.6rem', fontSize: '0.85rem', color: '#111827' }}>
+      <div style={{ marginBottom: '0.25rem', fontWeight: 600 }}>{dateStr}</div>
+      <div style={{ display: 'grid', gap: '0.2rem' }}>
+        {payload.map((p) => (
+          <div key={p.dataKey} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, display: 'inline-block' }}></span>
+            <span style={{ color: '#374151' }}>{p.dataKey}:</span>
+            <span style={{ marginLeft: 'auto', color: '#111827', fontWeight: 600 }}>${Math.round(p.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const assetPerformanceData = [
   { asset: 'Gold', y1: 57.94, y3: 33.02, y5: 18.40 },
@@ -16,9 +54,9 @@ const assetPerformanceData = [
 
 function DashboardHeader() {
   return (
-    <header className="dashboard-header">
-      <div className="dashboard-title" style={{ color: '#22223b', fontWeight: 700, fontSize: '2rem' }}>
-        AI Portfolio
+    <header className="dashboard-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: '#f3f4f6', paddingTop: '0.75rem' }}>
+      <div className="dashboard-title" style={{ color: '#22223b', fontWeight: 700, fontSize: '1.8rem', letterSpacing: '0.2px' }}>
+        EAI 6050: AI Portfolio
       </div>
       {/* <nav className="dashboard-nav" style={{ display: 'flex', gap: '2rem', fontSize: '1rem', color: '#22223b' }}>
         <a href="#">Analysis</a>
@@ -35,7 +73,7 @@ function DashboardHeader() {
 
 function SegmentedControl({ segments, active, onChange }) {
   return (
-    <div className="segmented-control" style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem', justifyContent: 'center' }}>
+    <div className="segmented-control" style={{ position: 'sticky', top: 56, zIndex: 999, display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', justifyContent: 'center', background: '#f3f4f6', padding: '0.5rem 0' }}>
       {segments.map((seg, idx) => (
         <button
           key={seg}
@@ -44,9 +82,9 @@ function SegmentedControl({ segments, active, onChange }) {
             background: active === idx ? '#22223b' : '#f3f4f6',
             color: active === idx ? '#fff' : '#22223b',
             border: 'none',
-            borderRadius: '2rem',
-            padding: '0.75rem 2rem',
-            fontSize: '1.1rem',
+            borderRadius: '1.25rem',
+            padding: '0.6rem 1.2rem',
+            fontSize: '0.95rem',
             fontWeight: 500,
             boxShadow: '0 1px 4px rgba(30,41,59,0.04)',
             cursor: 'pointer',
@@ -83,14 +121,14 @@ function PortfolioResults({ result }) {
   return (
     <div className="dashboard-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '2vw', minHeight: '70vh', background: '#f3f4f6' }}>
       <div className="card" style={{ background: '#fff', borderRadius: '1.5rem', boxShadow: '0 2px 12px rgba(30,41,59,0.08)', padding: '2rem' }}>
-        <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif' }}>Portfolio Results</h2>
+        <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.75rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif', letterSpacing: '0.2px' }}>Portfolio Results</h2>
 
         {hasApi && sectors.length > 0 && (
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Sectors</div>
+            <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Sectors</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {sectors.map(s => (
-                <span key={s} style={{ background: '#f3f4f6', color: '#22223b', borderRadius: '999px', padding: '0.35rem 0.75rem', fontSize: '0.9rem', fontWeight: 600 }}>{s}</span>
+                <span key={s} style={{ background: '#f3f4f6', color: '#22223b', borderRadius: '999px', padding: '0.25rem 0.6rem', fontSize: '0.85rem', fontWeight: 600 }}>{s}</span>
               ))}
             </div>
           </div>
@@ -124,14 +162,14 @@ function PortfolioResults({ result }) {
 
         {hasApi && portfolio.length > 0 ? (
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
-            <thead>
+            <thead style={{ fontSize: '0.95rem' }}>
               <tr>
                 <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Company</th>
                 <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Sector</th>
                 <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Allocation</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody style={{ fontSize: '0.95rem' }}>
               {portfolio.map(row => (
                 <tr key={`${row.ticker}-${row.sector}`}>
                   <td style={{ padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>{row.abbr || row.ticker}</td>
@@ -175,9 +213,9 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
     <>
       <div style={{
         background: '#fff',
-        borderRadius: '1.5rem',
-        boxShadow: '0 2px 12px rgba(30,41,59,0.08)',
-        padding: '2rem',
+        borderRadius: '1.25rem',
+        boxShadow: '0 1px 8px rgba(30,41,59,0.06)',
+        padding: '1.25rem',
         margin: '0 auto',
         maxWidth: '98%',
         overflowX: 'auto',
@@ -186,10 +224,10 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
           <thead>
             <tr>
               <th style={{ background: '#fff', width: '48px' }}></th>
-              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>Asset Class</th>
-              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>1Y</th>
-              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>3Y</th>
-              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>5Y</th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.05rem', padding: '0.75rem 1rem' }}>Asset Class</th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.05rem', padding: '0.75rem 1rem' }}>1Y</th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.05rem', padding: '0.75rem 1rem' }}>3Y</th>
+              <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.05rem', padding: '0.75rem 1rem' }}>5Y</th>
             </tr>
           </thead>
           <tbody>
@@ -213,7 +251,7 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
                       />
                     )}
                   </td>
-                  <td style={{ color: '#22223b', fontWeight: 500, fontSize: '1.1rem', padding: '1rem 1.5rem' }}>
+                  <td style={{ color: '#22223b', fontWeight: 600, fontSize: '1rem', padding: '0.85rem 1rem' }}>
                     {row.asset === 'US Stock Market (S&P 500)' ? (
                       <span style={{ position: 'relative' }}>
                         <span
@@ -229,9 +267,9 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
                   </td>
                     {(() => { const vals = (row.asset === 'US Stock Market (S&P 500)' && sp500Averages) ? sp500Averages : { y1: row.y1, y3: row.y3, y5: row.y5 }; return (
                     <>
-                      <td style={{ background: vals.y1 > 0 ? '#d1fae5' : vals.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y1 > 0 ? '#065f46' : vals.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{vals.y1}%</td>
-                      <td style={{ background: vals.y3 > 0 ? '#d1fae5' : vals.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y3 > 0 ? '#065f46' : vals.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{vals.y3}%</td>
-                      <td style={{ background: vals.y5 > 0 ? '#d1fae5' : vals.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y5 > 0 ? '#065f46' : vals.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 600 }}>{vals.y5}%</td>
+                      <td style={{ background: vals.y1 > 0 ? '#d1fae5' : vals.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y1 > 0 ? '#065f46' : vals.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{vals.y1}%</td>
+                      <td style={{ background: vals.y3 > 0 ? '#d1fae5' : vals.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y3 > 0 ? '#065f46' : vals.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{vals.y3}%</td>
+                      <td style={{ background: vals.y5 > 0 ? '#d1fae5' : vals.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: vals.y5 > 0 ? '#065f46' : '#991b1b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{vals.y5}%</td>
                     </>
                   ); })()}
                 </tr>
@@ -246,10 +284,10 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
                           style={{ width: '18px', height: '18px', accentColor: '#6366f1', marginRight: '0.5rem' }}
                         />
                       </td>
-                      <td style={{ color: '#22223b', fontWeight: 400, fontSize: '1rem', padding: '0.75rem 1.5rem', paddingLeft: '2.5rem' }}>{sub.asset}</td>
-                      <td style={{ background: sub.y1 > 0 ? '#d1fae5' : sub.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y1 > 0 ? '#065f46' : sub.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y1}%</td>
-                      <td style={{ background: sub.y3 > 0 ? '#d1fae5' : sub.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y3 > 0 ? '#065f46' : sub.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y3}%</td>
-                      <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : sub.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.75rem', padding: '0.5rem 1rem', fontWeight: 500 }}>{sub.y5}%</td>
+                      <td style={{ color: '#22223b', fontWeight: 500, fontSize: '0.95rem', padding: '0.65rem 1rem', paddingLeft: '2rem' }}>{sub.asset}</td>
+                      <td style={{ background: sub.y1 > 0 ? '#d1fae5' : sub.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y1 > 0 ? '#065f46' : sub.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y1}%</td>
+                      <td style={{ background: sub.y3 > 0 ? '#d1fae5' : sub.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y3 > 0 ? '#065f46' : sub.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y3}%</td>
+                      <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : sub.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y5}%</td>
                     </tr>
                   ))
                 )}
@@ -258,7 +296,7 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
           </tbody>
         </table>
       </div>
-      <div style={{ textAlign: 'right', marginTop: '1.5rem' }}>
+      <div style={{ textAlign: 'right', marginTop: '1rem' }}>
         <button
           className="btn-primary"
           disabled={!isAnySelected}
@@ -267,11 +305,11 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
             background: !isAnySelected ? '#e5e7eb' : '#22223b',
             color: !isAnySelected ? '#888' : '#fff',
             border: 'none',
-            borderRadius: '1rem',
-            padding: '0.75rem 2rem',
-            fontSize: '1.1rem',
+            borderRadius: '0.9rem',
+            padding: '0.6rem 1.4rem',
+            fontSize: '0.95rem',
             fontWeight: 600,
-            boxShadow: '0 2px 8px rgba(30,41,59,0.10)',
+            boxShadow: '0 1px 6px rgba(30,41,59,0.08)',
             cursor: !isAnySelected ? 'not-allowed' : 'pointer',
             transition: 'background 0.2s, color 0.2s',
           }}
@@ -298,7 +336,7 @@ function SP500StocksTable({ subsectors, subChecked, handleSubCheck }) {
         <thead>
           <tr>
             <th style={{ background: '#fff', width: '48px' }}></th>
-            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>S&P 500 Sector</th>
+            <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>Sectors</th>
             <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>1Y</th>
             <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>3Y</th>
             <th style={{ background: '#fff', color: '#22223b', fontWeight: 700, fontSize: '1.3rem', padding: '1rem 1.5rem' }}>5Y</th>
@@ -331,9 +369,9 @@ function TemplatesPage() {
   return (
     <div className="dashboard-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2vw', minHeight: '70vh', background: '#f3f4f6' }}>
       <div className="card" style={{ background: '#fff', borderRadius: '1.5rem', boxShadow: '0 2px 12px rgba(30,41,59,0.08)', padding: '2rem', margin: '0 auto', maxWidth: '900px' }}>
-        <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1.5rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif' }}>Templates</h2>
+        <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1.5rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif' }}>Composite</h2>
         <p style={{ color: '#22223b', fontSize: '1.1rem', fontFamily: 'Poppins, Inter, sans-serif' }}>
-          Here you can manage and select portfolio templates. (Demo content)
+          Here you can manage and select portfolio composite. (Demo content)
         </p>
         <ul style={{ marginTop: '2rem', paddingLeft: 0, listStyle: 'none' }}>
           <li style={{ background: '#f3f4f6', borderRadius: '1rem', padding: '1rem 1.5rem', marginBottom: '1rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif', fontWeight: 500 }}>Conservative Portfolio</li>
@@ -355,6 +393,76 @@ function DashboardDemo() {
   const [portfolioData, setPortfolioData] = React.useState(null);
   const [sectorReturns, setSectorReturns] = React.useState(null);
   const [sp500Averages, setSp500Averages] = React.useState(null);
+  const [sectorSeries, setSectorSeries] = React.useState(null);
+  const [hoveredSeries, setHoveredSeries] = React.useState(null);
+  const [lockedSeries, setLockedSeries] = React.useState(null);
+  const [range, setRange] = React.useState('Max');
+  const chartData = React.useMemo(() => {
+    if (!sectorSeries || Object.keys(sectorSeries).length === 0) return [];
+    const sectors = Object.keys(sectorSeries);
+    const dateSet = new Set();
+    sectors.forEach(sec => {
+      sectorSeries[sec].forEach(pt => dateSet.add(pt.date));
+    });
+    const dates = Array.from(dateSet).sort();
+    const merged = dates.map(d => {
+      const row = { date: d };
+      sectors.forEach(sec => {
+        const arr = sectorSeries[sec];
+        const found = arr.find(pt => pt.date === d);
+        row[sec] = found ? found.value : null;
+      });
+      return row;
+    });
+    if (!merged.length) return merged;
+    const end = new Date(merged[merged.length - 1].date);
+    let start;
+    switch (range) {
+      case '1D':
+        start = new Date(end); start.setDate(start.getDate() - 1); break;
+      case '5D':
+        start = new Date(end); start.setDate(start.getDate() - 5); break;
+      case '1M':
+        start = new Date(end); start.setMonth(start.getMonth() - 1); break;
+      case '6M':
+        start = new Date(end); start.setMonth(start.getMonth() - 6); break;
+      case '1Y':
+        start = new Date(end); start.setFullYear(start.getFullYear() - 1); break;
+      case '5Y':
+        start = new Date(end); start.setFullYear(start.getFullYear() - 5); break;
+      case 'Max':
+      default:
+        start = new Date(merged[0].date);
+        break;
+    }
+    return merged.filter(r => {
+      const dt = new Date(r.date);
+      return dt >= start && dt <= end;
+    });
+  }, [sectorSeries, range]);
+
+  // Y-axis ticks at fixed $50 intervals across visible range
+  const yTicks = React.useMemo(() => {
+    if (!chartData || chartData.length === 0) return [];
+    let minV = Infinity;
+    let maxV = -Infinity;
+    const keys = Object.keys(sectorSeries || {});
+    chartData.forEach(row => {
+      keys.forEach(k => {
+        const v = row[k];
+        if (typeof v === 'number' && !Number.isNaN(v)) {
+          if (v < minV) minV = v;
+          if (v > maxV) maxV = v;
+        }
+      });
+    });
+    if (!isFinite(minV) || !isFinite(maxV)) return [];
+    const start = Math.floor(minV / 50) * 50;
+    const end = Math.ceil(maxV / 50) * 50;
+    const ticks = [];
+    for (let t = start; t <= end; t += 50) ticks.push(t);
+    return ticks;
+  }, [chartData, sectorSeries]);
 
   // Configure API base to work in dev (CRA) and production
   const API_BASE = process.env.REACT_APP_API_BASE || '';
@@ -386,6 +494,24 @@ function DashboardDemo() {
       });
     return () => controller.abort();
   }, []);
+
+  // Fetch monthly sector time series for chart (downsampled by backend)
+  React.useEffect(() => {
+    const controller = new AbortController();
+    console.log('[DashboardDemo] Fetching sector timeseries from', `${API_BASE}/model/sp500/gics-timeseries/?limit=all`);
+    fetch(`${API_BASE}/model/sp500/gics-timeseries/?limit=all`, { signal: controller.signal })
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch sector timeseries')))
+      .then(data => {
+        console.log('[DashboardDemo] Sector timeseries response:', data);
+        if (data && data.series) {
+          setSectorSeries(data.series);
+        }
+      })
+      .catch((err) => {
+        console.error('[DashboardDemo] Fetch sector timeseries error:', err);
+      });
+    return () => controller.abort();
+  }, [API_BASE]);
 
   // S&P 500 subsectors derived from backend sector returns
   const subsectors = React.useMemo(() => {
@@ -504,17 +630,114 @@ function DashboardDemo() {
           <PortfolioResults result={portfolioData?.result} />
         ) : null
       ) : activeSegment === 0 ? (
-        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', background: '#f3f4f6', borderRadius: '2rem', boxShadow: '0 2px 8px rgba(30,41,59,0.04)', minHeight: '50vh', alignItems: 'stretch' }}>
-          <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
-            {/* Placeholder for chart */}
-            <div style={{ width: '100%', height: '100%', background: '#f3f4f6', borderRadius: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6', fontWeight: 600, fontSize: '1.1rem' }}>
-              [Chart Area]
+        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', background: '#f3f4f6', borderRadius: '1.5rem', boxShadow: '0 1px 8px rgba(30,41,59,0.06)', minHeight: '50vh', alignItems: 'stretch' }}>
+          <div style={{ flex: '1 1 0', minWidth: '320px', maxWidth: '100%', minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
+            <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: '1.25rem', padding: '1rem' }}>
+              <h3 style={{ margin: 0, marginBottom: '0.5rem', color: '#22223b' }}>Asset Class Performance </h3>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {['1D','5D','1M','6M','1Y','5Y','Max'].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => setRange(r)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 16,
+                      border: '1px solid #e5e7eb',
+                      background: range === r ? '#22223b' : '#fff',
+                      color: range === r ? '#fff' : '#22223b',
+                      fontSize: 12,
+                      cursor: 'pointer'
+                    }}
+                  >{r}</button>
+                ))}
+                <button
+                  onClick={() => { setLockedSeries(null); setHoveredSeries(null); }}
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '6px 10px',
+                    borderRadius: 16,
+                    border: '1px solid #e5e7eb',
+                    background: '#fff',
+                    color: '#22223b',
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }}
+                >Reset highlight</button>
+              </div>
+              <ResponsiveContainer width="100%" height={340}>
+                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" hide={false} tick={{ fontSize: 12 }} interval="preserveStartEnd" tickFormatter={(d) => {
+                    try {
+                      const dt = new Date(d);
+                      if (['1D','5D'].includes(range)) {
+                        return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`;
+                      }
+                      if (['1M','6M','1Y'].includes(range)) {
+                        return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+                      }
+                      return dt.getFullYear();
+                    } catch { return d; }
+                  }} />
+                  <YAxis 
+                    domain={[yTicks.length ? yTicks[0] : 'auto', yTicks.length ? yTicks[yTicks.length - 1] : 'auto']}
+                    tick={{ fontSize: 13 }}
+                    ticks={yTicks}
+                    padding={{ top: 8, bottom: 8 }}
+                    tickFormatter={(v) => `$${Math.round(v)}`}
+                    label={{ value: 'Index (base=100)', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 12 } }}
+                  />
+                  <Tooltip content={<CompactTooltip />} />
+                  {false && <Legend content={<HoverLegend onHover={(key) => setHoveredSeries(key)} onLeave={() => setHoveredSeries(null)} />} />}
+                  {(() => {
+                    if (!chartData.length) return null;
+                    const last = chartData[chartData.length - 1];
+                    const baselineY = lockedSeries && typeof last[lockedSeries] === 'number' ? last[lockedSeries] : null;
+                    return baselineY ? (
+                      <ReferenceLine y={baselineY} stroke="#9ca3af" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: 'Previous close', position: 'right', fill: '#6b7280', fontSize: 11 }} />
+                    ) : null;
+                  })()}
+                  {sectorSeries && Object.keys(sectorSeries).map((sec, idx) => (
+                    <Line
+                      key={sec}
+                      type="monotone"
+                      dataKey={sec}
+                      stroke={["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10]}
+                      dot={false}
+                      strokeWidth={(lockedSeries ? lockedSeries === sec : hoveredSeries === sec) ? 2.4 : 1.3}
+                      strokeOpacity={(lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec)) ? 0.22 : 1}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+              {sectorSeries && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
+                  {Object.keys(sectorSeries).map((sec, idx) => {
+                    const color = ["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10];
+                    const isActive = lockedSeries ? lockedSeries === sec : hoveredSeries === sec;
+                    const isDim = lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec);
+                    return (
+                      <div
+                        key={sec}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1 }}
+                        onMouseEnter={() => !lockedSeries && setHoveredSeries(sec)}
+                        onMouseLeave={() => !lockedSeries && setHoveredSeries(null)}
+                        onClick={() => setLockedSeries(prev => prev === sec ? null : sec)}
+                        title={lockedSeries === sec ? 'Click to unlock' : 'Click to lock highlight'}
+                      >
+                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block', boxShadow: isActive ? '0 0 0 2px rgba(99,102,241,0.25)' : 'none' }}></span>
+                        <span style={{ color: '#374151', fontSize: 12, fontWeight: isActive ? 600 : 500 }}>{sec}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
           <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', width: '50%', boxSizing: 'border-box', overflowX: 'visible' }}>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1rem', color: '#22223b' }}>
+            {/* <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem', color: '#22223b', letterSpacing: '0.2px' }}>
               Asset Class Performance
-            </h2>
+            </h2> */}
             <AssetPerformanceTable
               data={assetPerformanceData}
               checked={checked}
@@ -528,16 +751,105 @@ function DashboardDemo() {
         </div>
       ) : activeSegment === 1 ? (
         // S&P 500 Stocks tab content (reuse your S&P 500 table and chart layout)
-        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', background: '#f3f4f6', borderRadius: '2rem', boxShadow: '0 2px 8px rgba(30,41,59,0.04)', minHeight: '50vh', alignItems: 'stretch', padding: '2rem' }}>
-          <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', minHeight: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
-            <div style={{ width: '100%', height: '100%', background: '#f3f4f6', borderRadius: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6', fontWeight: 600, fontSize: '1.1rem' }}>
-              [Chart Area]
+        <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', background: '#f3f4f6', borderRadius: '1.5rem', boxShadow: '0 1px 8px rgba(30,41,59,0.06)', minHeight: '50vh', alignItems: 'stretch', padding: '1.25rem' }}>
+          <div style={{ flex: '1 1 0', minWidth: '320px', maxWidth: '100%', minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
+            <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: '1.25rem', padding: '1rem' }}>
+              <h3 style={{ margin: 0, marginBottom: '0.5rem', color: '#22223b' }}>S&P 500</h3>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {['1D','5D','1M','6M','1Y','5Y','Max'].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => setRange(r)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 16,
+                      border: '1px solid #e5e7eb',
+                      background: range === r ? '#22223b' : '#fff',
+                      color: range === r ? '#fff' : '#22223b',
+                      fontSize: 12,
+                      cursor: 'pointer'
+                    }}
+                  >{r}</button>
+                ))}
+                <button
+                  onClick={() => { setLockedSeries(null); setHoveredSeries(null); }}
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '6px 10px',
+                    borderRadius: 16,
+                    border: '1px solid #e5e7eb',
+                    background: '#fff',
+                    color: '#22223b',
+                    fontSize: 12,
+                    cursor: 'pointer'
+                  }}
+                >Reset highlight</button>
+              </div>
+              <ResponsiveContainer width="100%" height={340}>
+                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" hide={false} tick={{ fontSize: 12 }} interval="preserveStartEnd" tickFormatter={(d) => {
+                    try { return new Date(d).getFullYear(); } catch { return d; }
+                  }} />
+                  <YAxis 
+                    domain={[yTicks.length ? yTicks[0] : 'auto', yTicks.length ? yTicks[yTicks.length - 1] : 'auto']}
+                    tick={{ fontSize: 13 }}
+                    ticks={yTicks}
+                    padding={{ top: 8, bottom: 8 }}
+                    tickFormatter={(v) => `$${Math.round(v)}`}
+                    label={{ value: 'Index (base=100)', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 12 } }}
+                  />
+                  <Tooltip content={<CompactTooltip />} />
+                  {false && <Legend content={<HoverLegend onHover={(key) => setHoveredSeries(key)} onLeave={() => setHoveredSeries(null)} />} />}
+                  {(() => {
+                    if (!chartData.length) return null;
+                    const last = chartData[chartData.length - 1];
+                    const baselineY = lockedSeries && typeof last[lockedSeries] === 'number' ? last[lockedSeries] : null;
+                    return baselineY ? (
+                      <ReferenceLine y={baselineY} stroke="#9ca3af" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: 'Previous close', position: 'right', fill: '#6b7280', fontSize: 11 }} />
+                    ) : null;
+                  })()}
+                  {sectorSeries && Object.keys(sectorSeries).map((sec, idx) => (
+                    <Line
+                      key={sec}
+                      type="monotone"
+                      dataKey={sec}
+                      stroke={["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10]}
+                      dot={false}
+                      strokeWidth={(lockedSeries ? lockedSeries === sec : hoveredSeries === sec) ? 2.4 : 1.3}
+                      strokeOpacity={(lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec)) ? 0.22 : 1}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+              {sectorSeries && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
+                  {Object.keys(sectorSeries).map((sec, idx) => {
+                    const color = ["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10];
+                    const isActive = lockedSeries ? lockedSeries === sec : hoveredSeries === sec;
+                    const isDim = lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec);
+                    return (
+                      <div
+                        key={sec}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1 }}
+                        onMouseEnter={() => !lockedSeries && setHoveredSeries(sec)}
+                        onMouseLeave={() => !lockedSeries && setHoveredSeries(null)}
+                        onClick={() => setLockedSeries(prev => prev === sec ? null : sec)}
+                        title={lockedSeries === sec ? 'Click to unlock' : 'Click to lock highlight'}
+                      >
+                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block', boxShadow: isActive ? '0 0 0 2px rgba(99,102,241,0.25)' : 'none' }}></span>
+                        <span style={{ color: '#374151', fontSize: 12, fontWeight: isActive ? 600 : 500 }}>{sec}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
           <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', width: '50%', boxSizing: 'border-box', overflowX: 'visible' }}>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: '1rem', color: '#22223b' }}>
+            {/* <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.75rem', color: '#22223b', letterSpacing: '0.2px' }}>
               S&P 500 Sectors
-            </h2>
+            </h2> */}
             <SP500StocksTable subsectors={subsectors} subChecked={subChecked} handleSubCheck={handleSubCheck} />
           </div>
         </div>
@@ -545,7 +857,7 @@ function DashboardDemo() {
         <TemplatesPage />
       )}
       <style>{`
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
           .dashboard-container {
             padding: 1vw !important;
           }
@@ -557,15 +869,15 @@ function DashboardDemo() {
         }
         @media (max-width: 600px) {
           .dashboard-title {
-            font-size: 1.1rem !important;
+            font-size: 1rem !important;
           }
           .card {
             padding: 0.5rem !important;
             border-radius: 1rem !important;
           }
           .data-table th, .data-table td {
-            padding: 0.5rem 0.5rem !important;
-            font-size: 0.9rem !important;
+            padding: 0.4rem 0.5rem !important;
+            font-size: 0.85rem !important;
           }
         }
       `}</style>
