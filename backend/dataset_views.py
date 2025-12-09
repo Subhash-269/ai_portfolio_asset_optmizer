@@ -277,3 +277,67 @@ def gics_sector_timeseries(request):
         series[sector] = [{'date': d.strftime('%Y-%m-%d'), 'value': round(float(v), 2)} for d, v in norm.items()]
 
     return JsonResponse({'series': series}, safe=False)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description='Compute 1Y/3Y/5Y equal-weight returns for each Commodity Type using Training/Commodities/commodities.csv',
+    responses={200: openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_OBJECT))}
+)
+@api_view(['GET'])
+def commodities_returns(request):
+    # Locate commodities CSV
+    data_paths = [
+        os.path.join('Training', 'Commodities', 'commodities.csv'),
+        os.path.join('Commodities', 'commodities.csv'),
+        'commodities.csv'
+    ]
+    csv_path = next((p for p in data_paths if os.path.exists(p)), None)
+    if csv_path is None:
+        return JsonResponse({'error': 'Commodities CSV not found'}, status=500)
+
+    df = pd.read_csv(csv_path)
+    # Expect columns: Date, Commodity Type, Close
+    if 'Date' not in df.columns or 'Close' not in df.columns:
+        return JsonResponse({'error': 'CSV must contain Date and Close'}, status=500)
+    # Normalize commodity identifier to Ticker-like key
+    commodity_col = None
+    for c in ['Commodity Type', 'Commodity', 'Type']:
+        if c in df.columns:
+            commodity_col = c
+            break
+    if commodity_col is None:
+        return JsonResponse({'error': 'CSV must contain Commodity Type column'}, status=500)
+
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # Pivot close prices per commodity type
+    df = df.rename(columns={commodity_col: 'Commodity'})
+    pivot = df.pivot(index='Date', columns='Commodity', values='Close').sort_index().ffill().bfill()
+    dates = pivot.index
+    if len(dates) == 0:
+        return JsonResponse({'error': 'No data points available'}, status=500)
+
+    def period_return(days):
+        if len(dates) <= days:
+            start_idx = 0
+        else:
+            start_idx = len(dates) - days - 1
+        start = pivot.iloc[start_idx]
+        end = pivot.iloc[-1]
+        ret = (end / start) - 1.0
+        return ret
+
+    ret_1y = period_return(252)
+    ret_3y = period_return(756)
+    ret_5y = period_return(1260)
+
+    results = []
+    for commodity in pivot.columns:
+        y1 = float(ret_1y.get(commodity, 0.0)) * 100.0
+        y3 = float(ret_3y.get(commodity, 0.0)) * 100.0
+        y5 = float(ret_5y.get(commodity, 0.0)) * 100.0
+        results.append({'asset': commodity, 'y1': round(y1, 2), 'y3': round(y3, 2), 'y5': round(y5, 2)})
+
+    # Sort by 1Y descending
+    results.sort(key=lambda x: x['y1'], reverse=True)
+    return JsonResponse(results, safe=False)
