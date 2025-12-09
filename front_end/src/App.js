@@ -209,7 +209,7 @@ function PortfolioResults({ result }) {
               </div>
               {assetsUsed.length > 0 && (
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Assets Used</div>
+                  <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Commodities Used</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {assetsUsed.map(a => (
                       <span key={a} style={{ background: '#eef2ff', color: '#1f2937', borderRadius: '999px', padding: '0.25rem 0.6rem', fontSize: '0.85rem', fontWeight: 600 }}>{a}</span>
@@ -220,7 +220,7 @@ function PortfolioResults({ result }) {
             </div>
             {sectorDistribution.length > 0 && (
               <div style={{ minWidth: '320px', height: '340px' }}>
-                <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Sector Distribution</div>
+                <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Capital Allocation</div>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -244,7 +244,9 @@ function PortfolioResults({ result }) {
                       if (!active || !payload || !payload.length) return null;
                       const p = payload[0];
                       const sector = p.name;
-                      const pct = Number(p.percent * 100).toFixed(2);
+                      const val = Number(p.value ?? (p.payload && p.payload.value));
+                      const total = sectorDistribution.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+                      const pct = total > 0 && isFinite(val) ? ((val / total) * 100).toFixed(2) : '0.00';
                       const contrib = sectorContributors[sector] || [];
                       return (
                         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 2px 10px rgba(30,41,59,0.10)', padding: '0.6rem 0.8rem' }}>
