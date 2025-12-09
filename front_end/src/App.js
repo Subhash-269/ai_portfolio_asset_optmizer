@@ -40,11 +40,11 @@ function CompactTooltip({ active, payload, label }) {
 }
 
 const assetPerformanceData = [
-  { asset: 'Gold', y1: 57.94, y3: 33.02, y5: 18.40 },
+  // { asset: 'Gold', y1: 57.94, y3: 33.02, y5: 18.40 },
   // { asset: 'Intl Developed Markets', y1: 26.26, y3: 15.87, y5: 9.49 },
   // { asset: 'Emerging Markets', y1: 22.81, y3: 14.30, y5: 6.22 },
   { asset: 'US Stock Market (S&P 500)', y1: 17.53, y3: 24.89, y5: 16.45 },
-  { asset: 'Commodities', y1: 15.84, y3: 4.26, y5: 11.62 },
+  // { asset: 'Commodities', y1: 15.84, y3: 4.26, y5: 11.62 },
   // { asset: 'Intermediate Treasuries', y1: 6.44, y3: 4.17, y5: -0.18 },
   // { asset: 'Total Bond Market', y1: 5.70, y3: 4.52, y5: -0.34 },
   // { asset: 'Short Treasuries', y1: 5.09, y3: 4.44, y5: 1.68 },
@@ -118,6 +118,21 @@ function PortfolioResults({ result }) {
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#14b8a6', '#f43f5e', '#84cc16', '#a78bfa'];
 
+  // Custom in-slice percentage label to avoid cutting off
+  const renderSectorLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    if (!isFinite(percent)) return null;
+    const RADIAN = Math.PI / 180;
+    const r = innerRadius + (outerRadius - innerRadius) * 0.6; // place label ~60% into the slice
+    const x = cx + r * Math.cos(-midAngle * RADIAN);
+    const y = cy + r * Math.sin(-midAngle * RADIAN);
+    const text = `${(percent * 100).toFixed(1)}%`;
+    return (
+      <text x={x} y={y} fill="#374151" textAnchor="middle" dominantBaseline="central" style={{ fontSize: 12, fontWeight: 600 }}>
+        {text}
+      </text>
+    );
+  };
+
   return (
     <div className="dashboard-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '2vw', minHeight: '70vh', background: '#f3f4f6' }}>
       <div className="card" style={{ background: '#fff', borderRadius: '1.5rem', boxShadow: '0 2px 12px rgba(30,41,59,0.08)', padding: '2rem' }}>
@@ -147,7 +162,18 @@ function PortfolioResults({ result }) {
               <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Sector Distribution</div>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={sectorDistribution} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2} stroke="#fff" labelLine={false} label={({ value }) => `${Number(value).toFixed(1)}%`}>
+                  <Pie
+                    data={sectorDistribution}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={70}
+                    outerRadius={110}
+                    paddingAngle={2}
+                    minAngle={8}
+                    stroke="#fff"
+                    labelLine={false}
+                    label={renderSectorLabel}
+                  >
                     {sectorDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -192,6 +218,26 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
   const isSubsectorsProvided = Array.isArray(subsectors) && subsectors.length > 0;
   const isStockMarketChecked = subChecked.every(Boolean);
 
+  // Commodities: fetch and manage expand + selection
+  const [commodities, setCommodities] = React.useState([]);
+  const [comExpanded, setComExpanded] = React.useState(false);
+  const [comSubChecked, setComSubChecked] = React.useState([]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    fetch('/model/commodities/returns/')
+      .then((res) => res.json())
+      .then((json) => {
+        if (!isMounted || !Array.isArray(json)) return;
+        setCommodities(json);
+        setComSubChecked(Array(json.length).fill(false));
+      })
+      .catch(() => {
+        // silently ignore for now
+      });
+    return () => { isMounted = false; };
+  }, []);
+
   // Select all/deselect all logic for S&P 500
   const handleSP500Check = () => {
     const newVal = !isStockMarketChecked;
@@ -206,8 +252,21 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
     });
   };
 
+  const handleComAllCheck = () => {
+    const newVal = comSubChecked.length > 0 ? !comSubChecked.every(Boolean) : true;
+    setComSubChecked(Array(commodities.length).fill(newVal));
+  };
+
+  const handleComSubCheck = (idx) => {
+    setComSubChecked((prev) => {
+      const updated = [...prev];
+      updated[idx] = !updated[idx];
+      return updated;
+    });
+  };
+
   // Button enabled if any checked OR any subChecked
-  const isAnySelected = checked.some(Boolean) || subChecked.some(Boolean);
+  const isAnySelected = checked.some(Boolean) || subChecked.some(Boolean) || comSubChecked.some(Boolean);
 
   return (
     <>
@@ -287,12 +346,66 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
                       <td style={{ color: '#22223b', fontWeight: 500, fontSize: '0.95rem', padding: '0.65rem 1rem', paddingLeft: '2rem' }}>{sub.asset}</td>
                       <td style={{ background: sub.y1 > 0 ? '#d1fae5' : sub.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y1 > 0 ? '#065f46' : sub.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y1}%</td>
                       <td style={{ background: sub.y3 > 0 ? '#d1fae5' : sub.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y3 > 0 ? '#065f46' : sub.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y3}%</td>
-                      <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : sub.y5 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y5}%</td>
+                      <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : '#991b1b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y5}%</td>
                     </tr>
                   ))
                 )}
               </React.Fragment>
             ))}
+
+            {/* Commodities aggregate row */}
+            {commodities.length > 0 && (
+              <>
+                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={comSubChecked.length > 0 && comSubChecked.every(Boolean)}
+                      onChange={handleComAllCheck}
+                      style={{ width: '20px', height: '20px', accentColor: '#6366f1', cursor: 'pointer' }}
+                    />
+                  </td>
+                  <td style={{ color: '#22223b', fontWeight: 600, fontSize: '1rem', padding: '0.85rem 1rem' }}>
+                    <span style={{ cursor: 'pointer' }} onClick={() => setComExpanded((v) => !v)}>
+                      Commodities {comExpanded ? '▲' : '▼'}
+                    </span>
+                  </td>
+                  {(() => {
+                    const avg = (key) => {
+                      const vals = commodities.map((c) => Number(c[key] || 0));
+                      const m = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+                      return Math.round(m * 100) / 100;
+                    };
+                    const y1 = avg('y1');
+                    const y3 = avg('y3');
+                    const y5 = avg('y5');
+                    return (
+                      <>
+                        <td style={{ background: y1 > 0 ? '#d1fae5' : y1 < 0 ? '#fee2e2' : '#f3f4f6', color: y1 > 0 ? '#065f46' : y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{y1}%</td>
+                        <td style={{ background: y3 > 0 ? '#d1fae5' : y3 < 0 ? '#fee2e2' : '#f3f4f6', color: y3 > 0 ? '#065f46' : y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{y3}%</td>
+                        <td style={{ background: y5 > 0 ? '#d1fae5' : y5 < 0 ? '#fee2e2' : '#f3f4f6', color: y5 > 0 ? '#065f46' : '#991b1b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{y5}%</td>
+                      </>
+                    );
+                  })()}
+                </tr>
+                {comExpanded && commodities.map((sub, subIdx) => (
+                  <tr key={sub.asset} style={{ background: '#f9fafb' }}>
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={comSubChecked[subIdx]}
+                        onChange={() => handleComSubCheck(subIdx)}
+                        style={{ width: '18px', height: '18px', accentColor: '#6366f1', marginRight: '0.5rem' }}
+                      />
+                    </td>
+                    <td style={{ color: '#22223b', fontWeight: 500, fontSize: '0.95rem', padding: '0.65rem 1rem', paddingLeft: '2rem' }}>{sub.asset}</td>
+                    <td style={{ background: sub.y1 > 0 ? '#d1fae5' : sub.y1 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y1 > 0 ? '#065f46' : sub.y1 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y1}%</td>
+                    <td style={{ background: sub.y3 > 0 ? '#d1fae5' : sub.y3 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y3 > 0 ? '#065f46' : sub.y3 < 0 ? '#991b1b' : '#22223b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y3}%</td>
+                    <td style={{ background: sub.y5 > 0 ? '#d1fae5' : sub.y5 < 0 ? '#fee2e2' : '#f3f4f6', color: sub.y5 > 0 ? '#065f46' : '#991b1b', borderRadius: '0.6rem', padding: '0.4rem 0.75rem', fontWeight: 600 }}>{sub.y5}%</td>
+                  </tr>
+                ))}
+              </>
+            )}
           </tbody>
         </table>
       </div>
@@ -300,7 +413,11 @@ function AssetPerformanceTable({ data, checked, handleCheck, onCreatePortfolio, 
         <button
           className="btn-primary"
           disabled={!isAnySelected}
-          onClick={isAnySelected ? () => onCreatePortfolio({ checked, subChecked }) : undefined}
+          onClick={isAnySelected ? () => {
+            const selectedSectors = subsectors.filter((s, i) => subChecked[i]).map(s => s.asset);
+            const selectedCommodities = commodities.filter((c, i) => comSubChecked[i]).map(c => c.asset);
+            onCreatePortfolio({ sectors: selectedSectors, commodities: selectedCommodities });
+          } : undefined}
           style={{
             background: !isAnySelected ? '#e5e7eb' : '#22223b',
             color: !isAnySelected ? '#888' : '#fff',
@@ -393,6 +510,8 @@ function DashboardDemo() {
   const [portfolioData, setPortfolioData] = React.useState(null);
   const [sectorReturns, setSectorReturns] = React.useState(null);
   const [sp500Averages, setSp500Averages] = React.useState(null);
+  const [commoditiesReturns, setCommoditiesReturns] = React.useState(null);
+  const [commoditiesAverages, setCommoditiesAverages] = React.useState(null);
   const [sectorSeries, setSectorSeries] = React.useState(null);
   const [hoveredSeries, setHoveredSeries] = React.useState(null);
   const [lockedSeries, setLockedSeries] = React.useState(null);
@@ -495,6 +614,31 @@ function DashboardDemo() {
     return () => controller.abort();
   }, []);
 
+  // Fetch Commodities returns (1Y/3Y/5Y) from backend if available
+  React.useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_BASE}/model/commodities/returns/`, { signal: controller.signal })
+      .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch commodities returns')))
+      .then(data => {
+        if (Array.isArray(data)) {
+          setCommoditiesReturns(data);
+          const sum = data.reduce((acc, s) => ({
+            y1: acc.y1 + (Number(s.y1) || 0),
+            y3: acc.y3 + (Number(s.y3) || 0),
+            y5: acc.y5 + (Number(s.y5) || 0),
+          }), { y1: 0, y3: 0, y5: 0 });
+          const n = data.length || 1;
+          setCommoditiesAverages({
+            y1: +(sum.y1 / n).toFixed(2),
+            y3: +(sum.y3 / n).toFixed(2),
+            y5: +(sum.y5 / n).toFixed(2),
+          });
+        }
+      })
+      .catch(() => {})
+    return () => controller.abort();
+  }, [API_BASE]);
+
   // Fetch monthly sector time series for chart (downsampled by backend)
   React.useEffect(() => {
     const controller = new AbortController();
@@ -529,6 +673,20 @@ function DashboardDemo() {
   }, [subsectors.length]);
   const isStockMarketChecked = subChecked.every(Boolean);
 
+  const commoditiesSubsectors = React.useMemo(() => {
+    if (!Array.isArray(commoditiesReturns) || commoditiesReturns.length === 0) return [];
+    return commoditiesReturns.map(s => ({
+      asset: s.asset || s.commodity,
+      y1: Number(s.y1),
+      y3: Number(s.y3),
+      y5: Number(s.y5),
+    }));
+  }, [commoditiesReturns]);
+  const [comSubChecked, setComSubChecked] = React.useState([]);
+  React.useEffect(() => {
+    setComSubChecked(Array(commoditiesSubsectors.length).fill(true));
+  }, [commoditiesSubsectors.length]);
+
   // Selection logic
   const handleCheck = (idx) => {
     if (assetPerformanceData[idx].asset === 'US Stock Market (S&P 500)') {
@@ -551,18 +709,13 @@ function DashboardDemo() {
     });
   };
 
-  const handleCreatePortfolio = async ({ checked, subChecked }) => {
+  const handleCreatePortfolio = async ({ sectors, commodities }) => {
     try {
       setLoading(true);
-      // Determine selected S&P 500 sectors
-      const selectedSectors = subsectors
-        .filter((_, idx) => subChecked[idx])
-        .map(s => s.asset);
-
       const res = await fetch(`${API_BASE}/model/train_by_sectors/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sectors: selectedSectors }),
+        body: JSON.stringify({ sectors: Array.isArray(sectors) ? sectors : [], Commodities: Array.isArray(commodities) ? commodities : [] }),
       });
       if (!res.ok) throw new Error('Training request failed');
       const result = await res.json();
@@ -746,6 +899,10 @@ function DashboardDemo() {
               subsectors={subsectors}
               subChecked={subChecked}
               setSubChecked={setSubChecked}
+              commoditiesSubsectors={commoditiesSubsectors}
+              comSubChecked={comSubChecked}
+              setComSubChecked={setComSubChecked}
+              commoditiesAverages={commoditiesAverages}
             />
           </div>
         </div>
