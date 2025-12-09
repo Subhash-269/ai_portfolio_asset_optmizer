@@ -105,8 +105,42 @@ function PortfolioResults({ result }) {
   const tickersUsed = hasApi ? result.tickers_used || [] : [];
   const assetsUsed = hasApi ? result.assets_used || [] : [];
   const companiesUsedCount = hasApi ? (Array.isArray(result.tickers_used) ? result.tickers_used.length : 0) : 0;
-  const portfolio = hasApi ? [...result.portfolio].sort((a, b) => b.allocation - a.allocation) : [];
+  const portfolio = hasApi ? [...result.portfolio] : [];
   const [showAll, setShowAll] = React.useState(false);
+  const [sortKey, setSortKey] = React.useState('allocation');
+  const [sortDir, setSortDir] = React.useState('desc'); // 'asc' | 'desc'
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedPortfolio = React.useMemo(() => {
+    const copy = [...portfolio];
+    copy.sort((a, b) => {
+      let av, bv;
+      if (sortKey === 'allocation') {
+        av = Number(a.allocation) || 0;
+        bv = Number(b.allocation) || 0;
+      } else if (sortKey === 'company') {
+        av = (a.abbr || a.ticker || '').toLowerCase();
+        bv = (b.abbr || b.ticker || '').toLowerCase();
+      } else if (sortKey === 'sector') {
+        av = (a.sector || '').toLowerCase();
+        bv = (b.sector || '').toLowerCase();
+      } else {
+        av = 0; bv = 0;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return copy;
+  }, [portfolio, sortKey, sortDir]);
 
   const sectorDistribution = React.useMemo(() => {
     const agg = {};
@@ -241,13 +275,28 @@ function PortfolioResults({ result }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
               <thead style={{ fontSize: '0.95rem' }}>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Company</th>
-                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Sector</th>
-                  <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Allocation</th>
+                  <th onClick={() => toggleSort('company')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    Company
+                    <span style={{ marginLeft: 6, color: sortKey === 'company' ? '#111827' : '#9CA3AF' }}>
+                      {sortKey === 'company' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                  </th>
+                  <th onClick={() => toggleSort('sector')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    Sector
+                    <span style={{ marginLeft: 6, color: sortKey === 'sector' ? '#111827' : '#9CA3AF' }}>
+                      {sortKey === 'sector' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                  </th>
+                  <th onClick={() => toggleSort('allocation')} style={{ cursor: 'pointer', userSelect: 'none', textAlign: 'right', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    Allocation
+                    <span style={{ marginLeft: 6, color: sortKey === 'allocation' ? '#111827' : '#9CA3AF' }}>
+                      {sortKey === 'allocation' ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.95rem' }}>
-                {(showAll ? portfolio : portfolio.slice(0, 10)).map(row => (
+                {(showAll ? sortedPortfolio : sortedPortfolio.slice(0, 10)).map(row => (
                   <tr key={`${row.ticker}-${row.sector}`}>
                     <td style={{ padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>{row.abbr || row.ticker}</td>
                     <td style={{ padding: '0.75rem 1rem', color: '#22223b' }}>{row.sector}</td>
