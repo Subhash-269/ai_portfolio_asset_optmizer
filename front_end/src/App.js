@@ -103,8 +103,10 @@ function PortfolioResults({ result }) {
   const hasApi = result && Array.isArray(result.portfolio);
   const sectors = hasApi ? result.sectors || [] : [];
   const tickersUsed = hasApi ? result.tickers_used || [] : [];
+  const assetsUsed = hasApi ? result.assets_used || [] : [];
   const companiesUsedCount = hasApi ? (Array.isArray(result.tickers_used) ? result.tickers_used.length : 0) : 0;
   const portfolio = hasApi ? [...result.portfolio].sort((a, b) => b.allocation - a.allocation) : [];
+  const [showAll, setShowAll] = React.useState(false);
 
   const sectorDistribution = React.useMemo(() => {
     const agg = {};
@@ -114,6 +116,22 @@ function PortfolioResults({ result }) {
       agg[sec] = (agg[sec] || 0) + val;
     });
     return Object.entries(agg).map(([name, value]) => ({ name, value }));
+  }, [portfolio]);
+
+  // Map sector -> top contributing tickers for tooltip relevance to table
+  const sectorContributors = React.useMemo(() => {
+    const map = {};
+    portfolio.forEach((row) => {
+      const sec = row.sector || 'Unknown';
+      const val = Number(row.allocation) || 0;
+      if (!map[sec]) map[sec] = [];
+      map[sec].push({ abbr: row.abbr || row.ticker, allocation: val });
+    });
+    Object.keys(map).forEach((sec) => {
+      map[sec].sort((a, b) => b.allocation - a.allocation);
+      map[sec] = map[sec].slice(0, 4);
+    });
+    return map;
   }, [portfolio]);
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#14b8a6', '#f43f5e', '#84cc16', '#a78bfa'];
@@ -138,73 +156,124 @@ function PortfolioResults({ result }) {
       <div className="card" style={{ background: '#fff', borderRadius: '1.5rem', boxShadow: '0 2px 12px rgba(30,41,59,0.08)', padding: '2rem' }}>
         <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.75rem', color: '#22223b', fontFamily: 'Poppins, Inter, sans-serif', letterSpacing: '0.2px' }}>Portfolio Results</h2>
 
-        {hasApi && sectors.length > 0 && (
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Sectors</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {sectors.map(s => (
-                <span key={s} style={{ background: '#f3f4f6', color: '#22223b', borderRadius: '999px', padding: '0.25rem 0.6rem', fontSize: '0.85rem', fontWeight: 600 }}>{s}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
         {hasApi && (
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Companies Data Used</div>
-            <div style={{ color: '#22223b', fontSize: '1rem', fontWeight: 600 }}>{companiesUsedCount}</div>
-          </div>
-        )}
-
-        {hasApi && sectorDistribution.length > 0 && (
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div style={{ flex: '1 1 0', minWidth: '280px', height: '280px' }}>
-              <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Sector Distribution</div>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={sectorDistribution}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={70}
-                    outerRadius={110}
-                    paddingAngle={2}
-                    minAngle={8}
-                    stroke="#fff"
-                    labelLine={false}
-                    label={renderSectorLabel}
-                  >
-                    {sectorDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start', marginBottom: '1.5rem' }}>
+            <div>
+              {sectors.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Sectors</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {sectors.map(s => (
+                      <span key={s} style={{ background: '#f3f4f6', color: '#22223b', borderRadius: '999px', padding: '0.25rem 0.6rem', fontSize: '0.85rem', fontWeight: 600 }}>{s}</span>
                     ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => `${Number(v).toFixed(2)}%`} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Companies Data Used</div>
+                <div style={{ color: '#22223b', fontSize: '1rem', fontWeight: 600 }}>{companiesUsedCount}</div>
+              </div>
+              {assetsUsed.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: '0.5rem' }}>Assets Used</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {assetsUsed.map(a => (
+                      <span key={a} style={{ background: '#eef2ff', color: '#1f2937', borderRadius: '999px', padding: '0.25rem 0.6rem', fontSize: '0.85rem', fontWeight: 600 }}>{a}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
+            {sectorDistribution.length > 0 && (
+              <div style={{ minWidth: '320px', height: '340px' }}>
+                <div style={{ color: '#6b7280', fontSize: '0.95rem', marginBottom: '0.5rem' }}>Sector Distribution</div>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={sectorDistribution}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={80}
+                      outerRadius={130}
+                      padAngle={3}
+                      cornerRadius={6}
+                      minAngle={8}
+                      stroke="#fff"
+                      labelLine={false}
+                      label={renderSectorLabel}
+                    >
+                      {sectorDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={({ active, payload }) => {
+                      if (!active || !payload || !payload.length) return null;
+                      const p = payload[0];
+                      const sector = p.name;
+                      const pct = Number(p.percent * 100).toFixed(2);
+                      const contrib = sectorContributors[sector] || [];
+                      return (
+                        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 2px 10px rgba(30,41,59,0.10)', padding: '0.6rem 0.8rem' }}>
+                          <div style={{ fontWeight: 700, color: '#111827', marginBottom: 6 }}>{sector} : {pct}%</div>
+                          {contrib.length > 0 && (
+                            <div style={{ display: 'grid', gap: 4 }}>
+                              {contrib.map((c) => (
+                                <div key={`${sector}-${c.abbr}`} style={{ display: 'flex', gap: 6, fontSize: 12, color: '#374151' }}>
+                                  <span style={{ fontWeight: 600 }}>{c.abbr}</span>
+                                  <span style={{ marginLeft: 'auto' }}>{Number(c.allocation).toFixed(2)}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }} />
+                    <Legend verticalAlign="bottom" align="center" />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         )}
 
         {hasApi && portfolio.length > 0 ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
-            <thead style={{ fontSize: '0.95rem' }}>
-              <tr>
-                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Company</th>
-                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Sector</th>
-                <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Allocation</th>
-              </tr>
-            </thead>
-            <tbody style={{ fontSize: '0.95rem' }}>
-              {portfolio.map(row => (
-                <tr key={`${row.ticker}-${row.sector}`}>
-                  <td style={{ padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>{row.abbr || row.ticker}</td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#22223b' }}>{row.sector}</td>
-                  <td style={{ padding: '0.75rem 1rem', color: '#22223b', textAlign: 'right' }}>{`${Number(row.allocation).toFixed(2)}%`}</td>
+          <>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
+              <thead style={{ fontSize: '0.95rem' }}>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Company</th>
+                  <th style={{ textAlign: 'left', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Sector</th>
+                  <th style={{ textAlign: 'right', padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>Allocation</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody style={{ fontSize: '0.95rem' }}>
+                {(showAll ? portfolio : portfolio.slice(0, 10)).map(row => (
+                  <tr key={`${row.ticker}-${row.sector}`}>
+                    <td style={{ padding: '0.75rem 1rem', color: '#22223b', fontWeight: 600 }}>{row.abbr || row.ticker}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#22223b' }}>{row.sector}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#22223b', textAlign: 'right' }}>{`${Number(row.allocation).toFixed(2)}%`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {portfolio.length > 10 && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
+                <button
+                  onClick={() => setShowAll(v => !v)}
+                  style={{
+                    background: '#fff',
+                    color: '#22223b',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '999px',
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >{showAll ? 'View less' : 'View more'}</button>
+              </div>
+            )}
+          </>
         ) : (
           <div style={{ marginTop: '0.5rem', color: '#6b7280' }}>No portfolio results available.</div>
         )}
@@ -715,7 +784,11 @@ function DashboardDemo() {
       const res = await fetch(`${API_BASE}/model/train_by_sectors/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sectors: Array.isArray(sectors) ? sectors : [], Commodities: Array.isArray(commodities) ? commodities : [] }),
+        body: JSON.stringify({
+          sectors: Array.isArray(sectors) ? sectors : [],
+          Commodities: Array.isArray(commodities) ? commodities : [],
+          top_k: 'all',
+        }),
       });
       if (!res.ok) throw new Error('Training request failed');
       const result = await res.json();

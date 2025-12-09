@@ -504,7 +504,15 @@ def train_by_sectors(request):
         com_list = request.data.get('Commodities')
         sectors = request.data.get('sectors')
 
-        top_k = int(request.data.get('top_k', TOP_K_DEFAULT))
+        # Allow requesting all allocations via top_k='all' or <=0
+        top_k_param = request.data.get('top_k', TOP_K_DEFAULT)
+        try:
+            if isinstance(top_k_param, str) and top_k_param.strip().lower() == 'all':
+                top_k = -1
+            else:
+                top_k = int(top_k_param)
+        except Exception:
+            top_k = TOP_K_DEFAULT
         window = int(request.data.get('window', WINDOW))
         epochs = int(request.data.get('epochs', EPOCHS))
 
@@ -716,7 +724,12 @@ def train_by_sectors(request):
         print(f"[train_by_sectors] Inference weights: min={future_weights.min():.6f} max={future_weights.max():.6f} sum={future_weights.sum():.6f}")
 
         # Top-K allocations
-        idxs = np.argsort(future_weights)[-top_k:][::-1]
+        # Determine indices for top allocations
+        if isinstance(top_k, int) and top_k > 0:
+            idxs = np.argsort(future_weights)[-top_k:][::-1]
+        else:
+            # 'all' or non-positive -> return all assets sorted
+            idxs = np.argsort(future_weights)[::-1]
         portfolio = []
         for i in idxs:
             tkr = TICKERS[i]
