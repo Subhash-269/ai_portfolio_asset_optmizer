@@ -4,3 +4,4 @@
 *.pth
 *.pyc
 front_end/node_modules/
+notebooks
