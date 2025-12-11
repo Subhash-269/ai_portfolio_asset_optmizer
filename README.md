@@ -69,53 +69,43 @@ This project draws inspiration from several key open-source financial AI project
 * `pip`
 
 ### 1. Clone and Install
-```bash
-git clone [https://github.com/Subhash-269/portfolio_prj.git](https://github.com/Subhash-269/portfolio_prj.git)
+
+```powershell
+git clone https://github.com/Subhash-269/portfolio_prj.git
 cd portfolio_prj
 pip install -r requirements.txt
+```
 
 ## Setup and Run Guide
 
-- **Install requirements:**
-    - In the project root, install Python deps:
-        - Windows PowerShell:
-      
-            ```powershell
-            pip install -r requirements.txt
-            ```
+1) Install Python dependencies (from project root):
 
-- **Prepare data (Stocks & Commodities):**
-    - Generate composites and mappings:
-    
-        ```powershell
-        python Training\topcomp.py
-        ```
-    - Extract stock market data:
-    
-        ```powershell
-        python Training\extract_stocks_market.py
-        ```
-    - Extract commodities data:
-    
-        ```powershell
-        python Training\Commodities\extractcomm.py
-        ```
+```powershell
+pip install -r requirements.txt
+```
 
-- **Run backend (Django):**
-    - From the project root:
-    
-        ```powershell
-        python manage.py runserver
-        ```
+2) Prepare data (stocks and commodities):
 
-- **Run frontend (React):**
-    - In `front_end` folder:
-    
-        ```powershell
-        npm install
-        npm start
-        ```
-    - You can ignore npm warnings and vulnerability notices for this demo setup.
+```powershell
+python Training\topcomp.py
+python Training\extract_stocks_market.py
+python Training\Commodities\extractcomm.py
+```
 
-- **Open the app:**
-    - Visit http://localhost:3000 and explore the dashboard.
+3) Run the backend (Django, from project root):
+
+```powershell
+python manage.py runserver
+```
+
+4) Run the frontend (React, from front_end folder):
+
+```powershell
+cd front_end
+npm install
+npm start
+```
+
+Notes:
+- You can ignore npm warnings and vulnerability notices for this demo setup.
+- The app will be available at http://localhost:3000
