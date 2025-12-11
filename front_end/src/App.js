@@ -862,7 +862,7 @@ function DashboardDemo() {
   const [commoditiesAverages, setCommoditiesAverages] = React.useState(null);
   const [sectorSeries, setSectorSeries] = React.useState(null);
   const [hoveredSeries, setHoveredSeries] = React.useState(null);
-  const [lockedSeries, setLockedSeries] = React.useState(null);
+  const [lockedSeries, setLockedSeries] = React.useState([]); // allow multiple selections
   const [commoditiesSeries, setCommoditiesSeries] = React.useState(null);
   const [range, setRange] = React.useState('Max');
   const chartData = React.useMemo(() => {
@@ -1212,7 +1212,8 @@ function DashboardDemo() {
             <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: '1.25rem', padding: '1rem' }}>
               <h3 style={{ margin: 0, marginBottom: '0.5rem', color: '#22223b' }}>Asset Class Performance </h3>
               <div style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {['1D', '5D', '1M', '6M', '1Y', '5Y', 'Max'].map(r => (
+                {/* {['1D', '5D', '1M', '6M', '1Y', '5Y', 'Max'].map(r => ( */}
+                {['6M', '1Y', '5Y', 'Max'].map(r => (
                   <button
                     key={r}
                     onClick={() => setRange(r)}
@@ -1228,7 +1229,7 @@ function DashboardDemo() {
                   >{r}</button>
                 ))}
                 <button
-                  onClick={() => { setLockedSeries(null); setHoveredSeries(null); } }
+                  onClick={() => { setLockedSeries([]); setHoveredSeries(null); } }
                   style={{
                     marginLeft: 'auto',
                     padding: '6px 10px',
@@ -1267,7 +1268,8 @@ function DashboardDemo() {
                   {(() => {
                     if (!chartData.length) return null;
                     const last = chartData[chartData.length - 1];
-                    const baselineY = lockedSeries && typeof last[lockedSeries] === 'number' ? last[lockedSeries] : null;
+                    const firstLocked = Array.isArray(lockedSeries) && lockedSeries.length > 0 ? lockedSeries[0] : null;
+                    const baselineY = firstLocked && typeof last[firstLocked] === 'number' ? last[firstLocked] : null;
                     return baselineY ? (
                       <ReferenceLine y={baselineY} stroke="#9ca3af" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: 'Previous close', position: 'right', fill: '#6b7280', fontSize: 11 }} />
                     ) : null;
@@ -1279,8 +1281,8 @@ function DashboardDemo() {
                       dataKey={sec}
                       stroke={["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#14b8a6", "#f43f5e", "#84cc16", "#a78bfa"][idx % 10]}
                       dot={false}
-                      strokeWidth={(lockedSeries ? lockedSeries === sec : hoveredSeries === sec) ? 2.4 : 1.3}
-                      strokeOpacity={(lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec)) ? 0.22 : 1} />
+                      strokeWidth={(Array.isArray(lockedSeries) && lockedSeries.length > 0 ? lockedSeries.includes(sec) : hoveredSeries === sec) ? 2.4 : 1.3}
+                      strokeOpacity={(Array.isArray(lockedSeries) && lockedSeries.length > 0 ? (!lockedSeries.includes(sec)) : (hoveredSeries && hoveredSeries !== sec)) ? 0.22 : 1} />
                   ))}
                   {commoditiesSeries && Object.keys(commoditiesSeries).map((type, idx) => (
                     <Line
@@ -1289,37 +1291,57 @@ function DashboardDemo() {
                       dataKey={type}
                       stroke={["#f59e0b", "#8b5cf6", "#10b981", "#ef4444", "#0ea5e9", "#14b8a6", "#ec4899", "#84cc16", "#6366f1", "#fbbf24"][idx % 10]}
                       dot={false}
-                      strokeWidth={(lockedSeries ? lockedSeries === type : hoveredSeries === type) ? 2.4 : 1.3}
-                      strokeOpacity={(lockedSeries ? lockedSeries !== type : (hoveredSeries && hoveredSeries !== type)) ? 0.22 : 1} />
+                      strokeWidth={(Array.isArray(lockedSeries) && lockedSeries.length > 0 ? lockedSeries.includes(type) : hoveredSeries === type) ? 2.4 : 1.3}
+                      strokeOpacity={(Array.isArray(lockedSeries) && lockedSeries.length > 0 ? (!lockedSeries.includes(type)) : (hoveredSeries && hoveredSeries !== type)) ? 0.22 : 1} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
 
-              {/* Combined Legends for both Stocks and Commodities */}
+              {/* Legends grouped by asset class: Stock Market and Commodities */}
               {(sectorSeries || commoditiesSeries) && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e5e7eb', maxHeight: '200px', overflowY: 'auto' }}>
-                  {sectorSeries && Object.keys(sectorSeries).map((sec, idx) => {
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                  <div>
+                    <div style={{ color: '#6b7280', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Stock Market</div>
+                    {sectorSeries && Object.keys(sectorSeries).map((sec, idx) => {
                     const color = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#14b8a6", "#f43f5e", "#84cc16", "#a78bfa"][idx % 10];
-                    const isActive = lockedSeries ? lockedSeries === sec : hoveredSeries === sec;
-                    const isDim = lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec);
+                      const isLocked = Array.isArray(lockedSeries) && lockedSeries.includes(sec);
+                      const anyLocked = Array.isArray(lockedSeries) && lockedSeries.length > 0;
+                      const isActive = anyLocked ? isLocked : (hoveredSeries === sec);
+                      const isDim = anyLocked ? !isLocked : (hoveredSeries && hoveredSeries !== sec);
                     return (
-                      <div key={`sector-${sec}`} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: isActive ? '#f3f4f6' : 'transparent', transition: 'background-color 0.2s' }} onMouseEnter={() => !lockedSeries && setHoveredSeries(sec)} onMouseLeave={() => !lockedSeries && setHoveredSeries(null)} onClick={() => setLockedSeries(prev => prev === sec ? null : sec)}>
-                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0, boxShadow: isActive ? '0 0 0 2px rgba(99,102,241,0.25)' : 'none' }}></span>
+                        <div key={`sector-${sec}`} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: isActive ? '#f3f4f6' : 'transparent', transition: 'background-color 0.2s' }} onMouseEnter={() => !(Array.isArray(lockedSeries) && lockedSeries.length > 0) && setHoveredSeries(sec)} onMouseLeave={() => !(Array.isArray(lockedSeries) && lockedSeries.length > 0) && setHoveredSeries(null)} onClick={() => setLockedSeries(prev => {
+                          const arr = Array.isArray(prev) ? [...prev] : [];
+                          const i = arr.indexOf(sec);
+                          if (i >= 0) { arr.splice(i, 1); } else { arr.push(sec); }
+                          return arr;
+                        })}>
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0, boxShadow: isActive ? '0 0 0 2px rgba(99,102,241,0.25)' : 'none' }}></span>
                         <span style={{ color: '#374151', fontSize: 13, fontWeight: isActive ? 600 : 500 }}>{sec}</span>
                       </div>
                     );
-                  })}
-                  {commoditiesSeries && Object.keys(commoditiesSeries).map((type, idx) => {
+                    })}
+                  </div>
+                  <div>
+                    <div style={{ color: '#6b7280', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>Commodities</div>
+                    {commoditiesSeries && Object.keys(commoditiesSeries).map((type, idx) => {
                     const color = ["#f59e0b", "#8b5cf6", "#22c55e", "#dc2626", "#0ea5e9", "#06b6d4", "#ec4899", "#a3e635", "#fbbf24", "#fb923c"][idx % 10];
-                    const isActive = lockedSeries ? lockedSeries === type : hoveredSeries === type;
-                    const isDim = lockedSeries ? lockedSeries !== type : (hoveredSeries && hoveredSeries !== type);
+                      const isLocked = Array.isArray(lockedSeries) && lockedSeries.includes(type);
+                      const anyLocked = Array.isArray(lockedSeries) && lockedSeries.length > 0;
+                      const isActive = anyLocked ? isLocked : (hoveredSeries === type);
+                      const isDim = anyLocked ? !isLocked : (hoveredSeries && hoveredSeries !== type);
                     return (
-                      <div key={`commodity-${type}`} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: isActive ? '#fef3c7' : 'transparent', transition: 'background-color 0.2s' }} onMouseEnter={() => !lockedSeries && setHoveredSeries(type)} onMouseLeave={() => !lockedSeries && setHoveredSeries(null)} onClick={() => setLockedSeries(prev => prev === type ? null : type)}>
+                        <div key={`commodity-${type}`} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: isActive ? '#fef3c7' : 'transparent', transition: 'background-color 0.2s' }} onMouseEnter={() => !(Array.isArray(lockedSeries) && lockedSeries.length > 0) && setHoveredSeries(type)} onMouseLeave={() => !(Array.isArray(lockedSeries) && lockedSeries.length > 0) && setHoveredSeries(null)} onClick={() => setLockedSeries(prev => {
+                          const arr = Array.isArray(prev) ? [...prev] : [];
+                          const i = arr.indexOf(type);
+                          if (i >= 0) { arr.splice(i, 1); } else { arr.push(type); }
+                          return arr;
+                        })}>
                         <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0, boxShadow: isActive ? '0 0 0 2px rgba(245,158,11,0.25)' : 'none' }}></span>
                         <span style={{ color: '#374151', fontSize: 13, fontWeight: isActive ? 600 : 500 }}>{type}</span>
                       </div>
                     );
-                  })}
+                    })}
+                  </div>
                 </div>
               )}
             </div>
