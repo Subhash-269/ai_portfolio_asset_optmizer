@@ -341,3 +341,109 @@ def commodities_returns(request):
     # Sort by 1Y descending
     results.sort(key=lambda x: x['y1'], reverse=True)
     return JsonResponse(results, safe=False)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description='Return monthly equal-weight commodity type index time series from commodities.csv. Optionally filter by types via ?types=Energy,Metals',
+    manual_parameters=[
+        openapi.Parameter('types', openapi.IN_QUERY, description="Comma-separated commodity types to filter", type=openapi.TYPE_STRING),
+        openapi.Parameter('limit', openapi.IN_QUERY, description="Number of data points or 'all'", type=openapi.TYPE_STRING, default='60'),
+    ],
+    responses={200: openapi.Schema(type=openapi.TYPE_OBJECT)}
+)
+@api_view(['GET'])
+def commodities_timeseries(request):
+    # Locate commodities CSV
+    data_paths = [
+        os.path.join('Training', 'Commodities', 'commodities.csv'),
+        os.path.join('Commodities', 'commodities.csv'),
+        'commodities.csv'
+    ]
+    csv_path = next((p for p in data_paths if os.path.exists(p)), None)
+    if csv_path is None:
+        return JsonResponse({'error': 'Commodities CSV not found'}, status=500)
+
+    df = pd.read_csv(csv_path)
+    
+    # Validate required columns
+    if 'Date' not in df.columns or 'Close' not in df.columns:
+        return JsonResponse({'error': 'CSV must contain Date and Close'}, status=500)
+    
+    # Find commodity type column
+    type_col = None
+    for c in ['Commodity Type', 'Type', 'Commodity', 'Category']:
+        if c in df.columns:
+            type_col = c
+            break
+    if type_col is None:
+        return JsonResponse({'error': 'CSV must contain Commodity Type column'}, status=500)
+    
+    # Find ticker/symbol column
+    ticker_col = None
+    for c in ['Commodity Type', 'Type', 'Commodity', 'Category']:
+        if c in df.columns:
+            ticker_col = c
+            break
+    if ticker_col is None:
+        return JsonResponse({'error': 'CSV must contain Ticker column'}, status=500)
+    
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # Build commodity type -> tickers map
+    from collections import defaultdict
+    type_to_tickers = defaultdict(list)
+    for ticker in df[ticker_col].unique():
+        commodity_type = df[df[ticker_col] == ticker][type_col].iloc[0]
+        if pd.notna(commodity_type):
+            type_to_tickers[str(commodity_type)].append(ticker)
+
+    # Optional filter by commodity types
+    query = request.GET.get('types')
+    wanted = None
+    if query:
+        wanted = {s.strip().lower() for s in query.split(',') if s.strip()}
+
+    # Optional limit (number of points) or 'all'
+    limit_param = request.GET.get('limit', '60')
+    limit = None
+    if isinstance(limit_param, str) and limit_param.lower() == 'all':
+        limit = None
+    else:
+        try:
+            limit = max(1, int(limit_param))
+        except Exception:
+            limit = 60
+
+    # Pivot close prices
+    pivot = df.pivot(index='Date', columns=ticker_col, values='Close').sort_index().ffill().bfill()
+
+    # Monthly resample (end of month)
+    monthly = pivot.resample('M').last()
+
+    # Compute equal-weight commodity type index normalized to 100 at start
+    series = {}
+    for commodity_type, tickers in type_to_tickers.items():
+        if not tickers:
+            continue
+        if wanted and commodity_type.lower() not in wanted:
+            continue
+        cols = [t for t in tickers if t in monthly.columns]
+        if len(cols) == 0:
+            continue
+        
+        # Equal-weight portfolio value: average of normalized prices
+        sub = monthly[cols]
+        base = sub.iloc[0]
+        base[base == 0] = 1.0
+        norm = sub.div(base).mean(axis=1) * 100.0
+        
+        # Downsample if limit is set
+        if limit is not None and len(norm) > limit:
+            norm = norm.iloc[-limit:]
+        
+        series[commodity_type] = [
+            {'date': d.strftime('%Y-%m-%d'), 'value': round(float(v), 2)} 
+            for d, v in norm.items()
+        ]
+
+    return JsonResponse({'series': series}, safe=False)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine } from 'recharts'
 // Custom legend enabling hover highlight
 function HoverLegend({ payload, onHover, onLeave }) {
   if (!payload) return null;
@@ -19,6 +19,7 @@ function HoverLegend({ payload, onHover, onLeave }) {
     </div>
   );
 }
+
 // Compact tooltip for multi-series line chart
 function CompactTooltip({ active, payload, label }) {
   if (!active || !payload || payload.length === 0) return null;
@@ -59,15 +60,6 @@ function DashboardHeader() {
       <div className="dashboard-title" style={{ color: '#22223b', fontWeight: 700, fontSize: '1.8rem', letterSpacing: '0.2px' }}>
         EAI 6050: AI Portfolio
       </div>
-      {/* <nav className="dashboard-nav" style={{ display: 'flex', gap: '2rem', fontSize: '1rem', color: '#22223b' }}>
-        <a href="#">Analysis</a>
-        <a href="#">Markets</a>
-        <a href="#">Docs</a>
-        <a href="#">Region</a>
-        <a href="#">Tools</a>
-        <a href="#">Sign Up</a>
-        <a href="#">Log In</a>
-      </nav> */}
     </header>
   );
 }
@@ -871,21 +863,72 @@ function DashboardDemo() {
   const [sectorSeries, setSectorSeries] = React.useState(null);
   const [hoveredSeries, setHoveredSeries] = React.useState(null);
   const [lockedSeries, setLockedSeries] = React.useState(null);
+  const [commoditiesSeries, setCommoditiesSeries] = React.useState(null);
   const [range, setRange] = React.useState('Max');
   const chartData = React.useMemo(() => {
-    if (!sectorSeries || Object.keys(sectorSeries).length === 0) return [];
-    const sectors = Object.keys(sectorSeries);
+  //   if (!sectorSeries || Object.keys(sectorSeries).length === 0) return [];
+  //   const sectors = Object.keys(sectorSeries);
+  //   const dateSet = new Set();
+  //   sectors.forEach(sec => {
+  //     sectorSeries[sec].forEach(pt => dateSet.add(pt.date));
+  //   });
+  //   const dates = Array.from(dateSet).sort();
+  //   const merged = dates.map(d => {
+  //     const row = { date: d };
+  //     sectors.forEach(sec => {
+  //       const arr = sectorSeries[sec];
+  //       const found = arr.find(pt => pt.date === d);
+  //       row[sec] = found ? found.value : null;
+  //     });
+  //     return row;
+  //   });
+  //   if (!merged.length) return merged;
+  //   const end = new Date(merged[merged.length - 1].date);
+  //   let start;
+  //   switch (range) {
+  //     case '1D':
+  //       start = new Date(end); start.setDate(start.getDate() - 1); break;
+  //     case '5D':
+  //       start = new Date(end); start.setDate(start.getDate() - 5); break;
+  //     case '1M':
+  //       start = new Date(end); start.setMonth(start.getMonth() - 1); break;
+  //     case '6M':
+  //       start = new Date(end); start.setMonth(start.getMonth() - 6); break;
+  //     case '1Y':
+  //       start = new Date(end); start.setFullYear(start.getFullYear() - 1); break;
+  //     case '5Y':
+  //       start = new Date(end); start.setFullYear(start.getFullYear() - 5); break;
+  //     case 'Max':
+  //     default:
+  //       start = new Date(merged[0].date);
+  //       break;
+  //   }
+  //   return merged.filter(r => {
+  //     const dt = new Date(r.date);
+  //     return dt >= start && dt <= end;
+  //   });
+  // }, [sectorSeries, range]);
+    const allSeries = { ...(sectorSeries || {}) };
+    if (commoditiesSeries) {
+      Object.keys(commoditiesSeries).forEach(key => {
+        allSeries[key] = commoditiesSeries[key];
+      });
+    }
+
+    if (!allSeries || Object.keys(allSeries).length === 0) return [];
+  
+    const categories = Object.keys(allSeries);
     const dateSet = new Set();
-    sectors.forEach(sec => {
-      sectorSeries[sec].forEach(pt => dateSet.add(pt.date));
+    categories.forEach(cat => {
+      allSeries[cat].forEach(pt => dateSet.add(pt.date));
     });
     const dates = Array.from(dateSet).sort();
     const merged = dates.map(d => {
       const row = { date: d };
-      sectors.forEach(sec => {
-        const arr = sectorSeries[sec];
+      categories.forEach(cat => {
+        const arr = allSeries[cat];
         const found = arr.find(pt => pt.date === d);
-        row[sec] = found ? found.value : null;
+        row[cat] = found ? found.value : null;
       });
       return row;
     });
@@ -908,20 +951,23 @@ function DashboardDemo() {
       case 'Max':
       default:
         start = new Date(merged[0].date);
-        break;
+      break;
     }
     return merged.filter(r => {
-      const dt = new Date(r.date);
-      return dt >= start && dt <= end;
+    const dt = new Date(r.date);
+    return dt >= start && dt <= end;
     });
-  }, [sectorSeries, range]);
+    }, [sectorSeries, commoditiesSeries, range]);
 
   // Y-axis ticks at fixed $50 intervals across visible range
   const yTicks = React.useMemo(() => {
     if (!chartData || chartData.length === 0) return [];
     let minV = Infinity;
     let maxV = -Infinity;
-    const keys = Object.keys(sectorSeries || {});
+    const keys = [
+      ...Object.keys(sectorSeries || {}),
+      ...Object.keys(commoditiesSeries || {})
+    ];
     chartData.forEach(row => {
       keys.forEach(k => {
         const v = row[k];
@@ -937,7 +983,7 @@ function DashboardDemo() {
     const ticks = [];
     for (let t = start; t <= end; t += 50) ticks.push(t);
     return ticks;
-  }, [chartData, sectorSeries]);
+  }, [chartData, sectorSeries, commoditiesSeries]);
 
   // Configure API base to work in dev (CRA) and production
   const API_BASE = process.env.REACT_APP_API_BASE || '';
@@ -995,7 +1041,7 @@ function DashboardDemo() {
     return () => controller.abort();
   }, [API_BASE]);
 
-  // Fetch monthly sector time series for chart (downsampled by backend)
+  // // Fetch monthly sector time series for chart (downsampled by backend)
   React.useEffect(() => {
     const controller = new AbortController();
     console.log('[DashboardDemo] Fetching sector timeseries from', `${API_BASE}/model/sp500/gics-timeseries/?limit=all`);
@@ -1012,6 +1058,20 @@ function DashboardDemo() {
       });
     return () => controller.abort();
   }, [API_BASE]);
+  React.useEffect(() => {
+  const controller = new AbortController();
+  fetch(`${API_BASE}/model/commodities/timeseries/?limit=all`, { signal: controller.signal })
+    .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to fetch commodities timeseries')))
+    .then(data => {
+      if (data && data.series) {
+        setCommoditiesSeries(data.series);
+      }
+    })
+    .catch((err) => {
+      console.error('[DashboardDemo] Fetch commodities timeseries error:', err);
+    });
+  return () => controller.abort();
+}, [API_BASE]);
 
   // S&P 500 subsectors derived from backend sector returns
   const subsectors = React.useMemo(() => {
@@ -1101,6 +1161,7 @@ function DashboardDemo() {
     <div className="dashboard-container" style={{ maxWidth: '1400px', margin: '0 auto', padding: '2vw' }}>
       <DashboardHeader />
       <SegmentedControl segments={segments} active={activeSegment} onChange={setActiveSegment} />
+      
       {/* Loading overlay */}
       {loading && (
         <div style={{
@@ -1137,7 +1198,8 @@ function DashboardDemo() {
           </div>
         </div>
       )}
-      {/* ...existing code... */}
+      
+      {/* Main content based on active segment */}
       {activeSegment === 3 ? (
         !loading ? (
           <PortfolioResults result={portfolioData?.result} />
@@ -1150,7 +1212,7 @@ function DashboardDemo() {
             <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: '1.25rem', padding: '1rem' }}>
               <h3 style={{ margin: 0, marginBottom: '0.5rem', color: '#22223b' }}>Asset Class Performance </h3>
               <div style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {['1D','5D','1M','6M','1Y','5Y','Max'].map(r => (
+                {['1D', '5D', '1M', '6M', '1Y', '5Y', 'Max'].map(r => (
                   <button
                     key={r}
                     onClick={() => setRange(r)}
@@ -1166,7 +1228,7 @@ function DashboardDemo() {
                   >{r}</button>
                 ))}
                 <button
-                  onClick={() => { setLockedSeries(null); setHoveredSeries(null); }}
+                  onClick={() => { setLockedSeries(null); setHoveredSeries(null); } }
                   style={{
                     marginLeft: 'auto',
                     padding: '6px 10px',
@@ -1185,25 +1247,23 @@ function DashboardDemo() {
                   <XAxis dataKey="date" hide={false} tick={{ fontSize: 12 }} interval="preserveStartEnd" tickFormatter={(d) => {
                     try {
                       const dt = new Date(d);
-                      if (['1D','5D'].includes(range)) {
-                        return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2,'0')}`;
+                      if (['1D', '5D'].includes(range)) {
+                        return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`;
                       }
-                      if (['1M','6M','1Y'].includes(range)) {
-                        return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+                      if (['1M', '6M', '1Y'].includes(range)) {
+                        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
                       }
                       return dt.getFullYear();
                     } catch { return d; }
-                  }} />
-                  <YAxis 
+                  } } />
+                  <YAxis
                     domain={[yTicks.length ? yTicks[0] : 'auto', yTicks.length ? yTicks[yTicks.length - 1] : 'auto']}
                     tick={{ fontSize: 13 }}
                     ticks={yTicks}
                     padding={{ top: 8, bottom: 8 }}
                     tickFormatter={(v) => `$${Math.round(v)}`}
-                    label={{ value: 'Index (base=100)', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 12 } }}
-                  />
+                    label={{ value: 'Index (base=100)', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 12 } }} />
                   <Tooltip content={<CompactTooltip />} />
-                  {false && <Legend content={<HoverLegend onHover={(key) => setHoveredSeries(key)} onLeave={() => setHoveredSeries(null)} />} />}
                   {(() => {
                     if (!chartData.length) return null;
                     const last = chartData[chartData.length - 1];
@@ -1217,31 +1277,46 @@ function DashboardDemo() {
                       key={sec}
                       type="monotone"
                       dataKey={sec}
-                      stroke={["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10]}
+                      stroke={["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#14b8a6", "#f43f5e", "#84cc16", "#a78bfa"][idx % 10]}
                       dot={false}
                       strokeWidth={(lockedSeries ? lockedSeries === sec : hoveredSeries === sec) ? 2.4 : 1.3}
-                      strokeOpacity={(lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec)) ? 0.22 : 1}
-                    />
+                      strokeOpacity={(lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec)) ? 0.22 : 1} />
+                  ))}
+                  {commoditiesSeries && Object.keys(commoditiesSeries).map((type, idx) => (
+                    <Line
+                      key={type}
+                      type="monotone"
+                      dataKey={type}
+                      stroke={["#f59e0b", "#8b5cf6", "#10b981", "#ef4444", "#0ea5e9", "#14b8a6", "#ec4899", "#84cc16", "#6366f1", "#fbbf24"][idx % 10]}
+                      dot={false}
+                      strokeWidth={(lockedSeries ? lockedSeries === type : hoveredSeries === type) ? 2.4 : 1.3}
+                      strokeOpacity={(lockedSeries ? lockedSeries !== type : (hoveredSeries && hoveredSeries !== type)) ? 0.22 : 1} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
-              {sectorSeries && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
-                  {Object.keys(sectorSeries).map((sec, idx) => {
-                    const color = ["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10];
+
+              {/* Combined Legends for both Stocks and Commodities */}
+              {(sectorSeries || commoditiesSeries) && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e5e7eb', maxHeight: '200px', overflowY: 'auto' }}>
+                  {sectorSeries && Object.keys(sectorSeries).map((sec, idx) => {
+                    const color = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#14b8a6", "#f43f5e", "#84cc16", "#a78bfa"][idx % 10];
                     const isActive = lockedSeries ? lockedSeries === sec : hoveredSeries === sec;
                     const isDim = lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec);
                     return (
-                      <div
-                        key={sec}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1 }}
-                        onMouseEnter={() => !lockedSeries && setHoveredSeries(sec)}
-                        onMouseLeave={() => !lockedSeries && setHoveredSeries(null)}
-                        onClick={() => setLockedSeries(prev => prev === sec ? null : sec)}
-                        title={lockedSeries === sec ? 'Click to unlock' : 'Click to lock highlight'}
-                      >
-                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block', boxShadow: isActive ? '0 0 0 2px rgba(99,102,241,0.25)' : 'none' }}></span>
-                        <span style={{ color: '#374151', fontSize: 12, fontWeight: isActive ? 600 : 500 }}>{sec}</span>
+                      <div key={`sector-${sec}`} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: isActive ? '#f3f4f6' : 'transparent', transition: 'background-color 0.2s' }} onMouseEnter={() => !lockedSeries && setHoveredSeries(sec)} onMouseLeave={() => !lockedSeries && setHoveredSeries(null)} onClick={() => setLockedSeries(prev => prev === sec ? null : sec)}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0, boxShadow: isActive ? '0 0 0 2px rgba(99,102,241,0.25)' : 'none' }}></span>
+                        <span style={{ color: '#374151', fontSize: 13, fontWeight: isActive ? 600 : 500 }}>{sec}</span>
+                      </div>
+                    );
+                  })}
+                  {commoditiesSeries && Object.keys(commoditiesSeries).map((type, idx) => {
+                    const color = ["#f59e0b", "#8b5cf6", "#22c55e", "#dc2626", "#0ea5e9", "#06b6d4", "#ec4899", "#a3e635", "#fbbf24", "#fb923c"][idx % 10];
+                    const isActive = lockedSeries ? lockedSeries === type : hoveredSeries === type;
+                    const isDim = lockedSeries ? lockedSeries !== type : (hoveredSeries && hoveredSeries !== type);
+                    return (
+                      <div key={`commodity-${type}`} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: isActive ? '#fef3c7' : 'transparent', transition: 'background-color 0.2s' }} onMouseEnter={() => !lockedSeries && setHoveredSeries(type)} onMouseLeave={() => !lockedSeries && setHoveredSeries(null)} onClick={() => setLockedSeries(prev => prev === type ? null : type)}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0, boxShadow: isActive ? '0 0 0 2px rgba(245,158,11,0.25)' : 'none' }}></span>
+                        <span style={{ color: '#374151', fontSize: 13, fontWeight: isActive ? 600 : 500 }}>{type}</span>
                       </div>
                     );
                   })}
@@ -1250,9 +1325,6 @@ function DashboardDemo() {
             </div>
           </div>
           <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', width: '50%', boxSizing: 'border-box', overflowX: 'visible' }}>
-            {/* <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem', color: '#22223b', letterSpacing: '0.2px' }}>
-              Asset Class Performance
-            </h2> */}
             <AssetPerformanceTable
               data={assetPerformanceData}
               checked={checked}
@@ -1264,18 +1336,17 @@ function DashboardDemo() {
               commoditiesSubsectors={commoditiesSubsectors}
               comSubChecked={comSubChecked}
               setComSubChecked={setComSubChecked}
-              commoditiesAverages={commoditiesAverages}
-            />
+              commoditiesAverages={commoditiesAverages} />
           </div>
         </div>
       ) : activeSegment === 1 ? (
-        // S&P 500 Stocks tab content (reuse your S&P 500 table and chart layout)
         <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', background: '#f3f4f6', borderRadius: '1.5rem', boxShadow: '0 1px 8px rgba(30,41,59,0.06)', minHeight: '50vh', alignItems: 'stretch', padding: '1.25rem' }}>
           <div style={{ flex: '1 1 0', minWidth: '320px', maxWidth: '100%', minHeight: '260px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
             <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: '1.25rem', padding: '1rem' }}>
               <h3 style={{ margin: 0, marginBottom: '0.5rem', color: '#22223b' }}>S&P 500</h3>
+              
               <div style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                {['1D','5D','1M','6M','1Y','5Y','Max'].map(r => (
+                {['1D', '5D', '1M', '6M', '1Y', '5Y', 'Max'].map(r => (
                   <button
                     key={r}
                     onClick={() => setRange(r)}
@@ -1290,91 +1361,58 @@ function DashboardDemo() {
                     }}
                   >{r}</button>
                 ))}
-                <button
-                  onClick={() => { setLockedSeries(null); setHoveredSeries(null); }}
-                  style={{
-                    marginLeft: 'auto',
-                    padding: '6px 10px',
-                    borderRadius: 16,
-                    border: '1px solid #e5e7eb',
-                    background: '#fff',
-                    color: '#22223b',
-                    fontSize: 12,
-                    cursor: 'pointer'
-                  }}
-                >Reset highlight</button>
               </div>
+              
               <ResponsiveContainer width="100%" height={340}>
                 <LineChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" hide={false} tick={{ fontSize: 12 }} interval="preserveStartEnd" tickFormatter={(d) => {
-                    try { return new Date(d).getFullYear(); } catch { return d; }
-                  }} />
-                  <YAxis 
+                    try {
+                      const dt = new Date(d);
+                      if (['1D', '5D'].includes(range)) {
+                        return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2, '0')}`;
+                      }
+                      if (['1M', '6M', '1Y'].includes(range)) {
+                        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+                      }
+                      return dt.getFullYear();
+                    } catch { return d; }
+                  } } />
+                  <YAxis
                     domain={[yTicks.length ? yTicks[0] : 'auto', yTicks.length ? yTicks[yTicks.length - 1] : 'auto']}
                     tick={{ fontSize: 13 }}
                     ticks={yTicks}
                     padding={{ top: 8, bottom: 8 }}
                     tickFormatter={(v) => `$${Math.round(v)}`}
-                    label={{ value: 'Index (base=100)', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 12 } }}
-                  />
+                    label={{ value: 'Index (base=100)', angle: -90, position: 'insideLeft', style: { fill: '#6b7280', fontSize: 12 } }} />
                   <Tooltip content={<CompactTooltip />} />
-                  {false && <Legend content={<HoverLegend onHover={(key) => setHoveredSeries(key)} onLeave={() => setHoveredSeries(null)} />} />}
-                  {(() => {
-                    if (!chartData.length) return null;
-                    const last = chartData[chartData.length - 1];
-                    const baselineY = lockedSeries && typeof last[lockedSeries] === 'number' ? last[lockedSeries] : null;
-                    return baselineY ? (
-                      <ReferenceLine y={baselineY} stroke="#9ca3af" strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: 'Previous close', position: 'right', fill: '#6b7280', fontSize: 11 }} />
-                    ) : null;
-                  })()}
+                   {/* This line is optional if you want the same chart logic or a different one for segment 1 */}
+                   {/* Re-using the same lines logic for simplicity, or just empty if you want a blank chart */}
                   {sectorSeries && Object.keys(sectorSeries).map((sec, idx) => (
                     <Line
                       key={sec}
                       type="monotone"
                       dataKey={sec}
-                      stroke={["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10]}
+                      stroke={["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#14b8a6", "#f43f5e", "#84cc16", "#a78bfa"][idx % 10]}
                       dot={false}
-                      strokeWidth={(lockedSeries ? lockedSeries === sec : hoveredSeries === sec) ? 2.4 : 1.3}
-                      strokeOpacity={(lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec)) ? 0.22 : 1}
+                      strokeWidth={1.3}
                     />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
-              {sectorSeries && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
-                  {Object.keys(sectorSeries).map((sec, idx) => {
-                    const color = ["#6366f1","#10b981","#f59e0b","#ef4444","#3b82f6","#8b5cf6","#14b8a6","#f43f5e","#84cc16","#a78bfa"][idx % 10];
-                    const isActive = lockedSeries ? lockedSeries === sec : hoveredSeries === sec;
-                    const isDim = lockedSeries ? lockedSeries !== sec : (hoveredSeries && hoveredSeries !== sec);
-                    return (
-                      <div
-                        key={sec}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: isDim ? 0.6 : 1 }}
-                        onMouseEnter={() => !lockedSeries && setHoveredSeries(sec)}
-                        onMouseLeave={() => !lockedSeries && setHoveredSeries(null)}
-                        onClick={() => setLockedSeries(prev => prev === sec ? null : sec)}
-                        title={lockedSeries === sec ? 'Click to unlock' : 'Click to lock highlight'}
-                      >
-                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block', boxShadow: isActive ? '0 0 0 2px rgba(99,102,241,0.25)' : 'none' }}></span>
-                        <span style={{ color: '#374151', fontSize: 12, fontWeight: isActive ? 600 : 500 }}>{sec}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
-          <div style={{ flex: '1 1 0', minWidth: '300px', maxWidth: '100%', width: '50%', boxSizing: 'border-box', overflowX: 'visible' }}>
-            {/* <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: '0.75rem', color: '#22223b', letterSpacing: '0.2px' }}>
-              S&P 500 Sectors
-            </h2> */}
-            <SP500StocksTable subsectors={subsectors} subChecked={subChecked} handleSubCheck={handleSubCheck} />
+          
+          <div style={{ flex: '1 1 0', minWidth: '320px', maxWidth: '100%', minHeight: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '50%', boxSizing: 'border-box' }}>
+            <div style={{ width: '100%', height: '100%', background: '#fff', borderRadius: '1.25rem', padding: '1rem', paddingBottom: '2rem' }}>
+              <SP500StocksTable subsectors={subsectors} subChecked={subChecked} handleSubCheck={handleSubCheck} />
+            </div>
           </div>
         </div>
       ) : (
         <TemplatesPage />
       )}
+      
       <style>{`
         @media (max-width: 1100px) {
           .dashboard-container {

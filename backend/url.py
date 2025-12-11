@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import *
-from .dataset_views import sp500_gics_sectors, gics_sector_returns, gics_sector_timeseries, commodities_returns
+from .dataset_views import sp500_gics_sectors, gics_sector_returns, gics_sector_timeseries, commodities_returns, commodities_timeseries
 urlpatterns = [
     path('test/', test, name='test'),
     path('train_model/', train_model, name='train_model'),
@@ -10,4 +10,5 @@ urlpatterns = [
     path('sp500/gics-returns/', gics_sector_returns, name='gics_sector_returns'),
     path('sp500/gics-timeseries/', gics_sector_timeseries, name='gics_sector_timeseries'),
     path('commodities/returns/', commodities_returns, name='commodities_returns'),
+    path('commodities/timeseries/', commodities_timeseries, name='commodities_timeseries')
 ]
