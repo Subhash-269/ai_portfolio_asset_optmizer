@@ -46,11 +46,11 @@ const assetPerformanceData = [
   // { asset: 'Emerging Markets', y1: 22.81, y3: 14.30, y5: 6.22 },
   // S&P 500 row values are computed dynamically from sector rows; keep placeholders neutral
   { asset: 'US Stock Market (S&P 500)', y1: 0, y3: 0, y5: 0 },
-  // { asset: 'Commodities', y1: 15.84, y3: 4.26, y5: 11.62 },
+  // { asset: 'Commodities', y1: 0, y3: 0, y5: 0 },
   // { asset: 'Intermediate Treasuries', y1: 6.44, y3: 4.17, y5: -0.18 },
   // { asset: 'Total Bond Market', y1: 5.70, y3: 4.52, y5: -0.34 },
   // { asset: 'Short Treasuries', y1: 5.09, y3: 4.44, y5: 1.68 },
-  { asset: 'US Bonds', y1: 3.74, y3: 1.96, y5: -4.43 },
+  // { asset: 'US Bonds', y1: 3.74, y3: 1.96, y5: -4.43 },
   // { asset: 'Long Treasuries', y1: 1.71, y3: 0.59, y5: -7.15 },
 ];
 
@@ -763,10 +763,10 @@ function CompositeViewer() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             {data.top3.map((tier) => {
               const subtitle = tier.tier === 'Conservative'
-                ? 'Capital preservation with commodities tilt; lower drawdowns; 3–5y horizon.'
+                ? 'Less Risk'
                 : tier.tier === 'Balanced'
-                  ? 'Balanced risk and return; diversified across sectors and commodities; 5+ year growth.'
-                  : 'Return-seeking, equity momentum tilt; higher volatility; 7+ year horizon.';
+                  ? 'Moderate Risk'
+                  : 'Immediate Returns';
               return (
               <div key={tier.tier} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '1rem', padding: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
